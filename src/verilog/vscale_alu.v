@@ -1,4 +1,4 @@
-module alu(
+module vscale_alu(
 	   fn,
 	   in1,
 	   in2,
@@ -40,4 +40,4 @@ module alu(
    end
    
    
-endmodule // alu
+endmodule // vscale_alu
