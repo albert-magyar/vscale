@@ -24,8 +24,8 @@ module vscale_core(
    wire        stall_DX;
    wire        stall_WB;
 
-   wire        PC_src_sel;
-   wire        branch_cond_true;
+   wire [2:0]  PC_src_sel;
+   wire        cmp_true;
    
    wire        imem_wait;
    wire [31:0] imem_addr;
@@ -34,8 +34,8 @@ module vscale_core(
    wire [2:0]  imm_type;
    wire [31:0] imm;
    
-   wire        src_a_sel; // fix width
-   wire        src_b_sel; // fix width
+   wire [2:0]  src_a_sel; // fix width
+   wire [2:0]  src_b_sel; // fix width
    
    wire [3:0]  alu_op;
    wire [31:0] alu_src_a;
@@ -70,6 +70,8 @@ module vscale_core(
 	 end	 
       end
    end
+
+   assign dmem_addr = alu_out;
    
    always @(posedge hclk) begin
       if (reset) begin
@@ -80,6 +82,8 @@ module vscale_core(
       end
    end
 
+   assign regfile_wen = wr_reg_WB && !kill_WB;
+   
    assign dmem_wdata_delayed = store_data_WB;
    
 endmodule // vscale_core
