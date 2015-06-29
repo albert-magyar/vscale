@@ -108,6 +108,26 @@ module vscale_ctrl(
          PC_src_sel = `PC_PLUS_FOUR;
       end
    end // always @ begin
+
+   always @(*) begin
+      case (opcode)
+        `RV32_LUI : src_a_sel = `SRC_A_ZERO;
+        `RV32_AUIPC : src_a_sel = `SRC_A_PC;
+        `RV32_JAL : src_a_sel = `SRC_A_PC;
+        `RV32_JALR : src_a_sel = `SRC_A_PC;
+        default : src_a_sel = `SRC_A_RS1;
+      endcase // case (opcode)
+   end // always @ begin
+
+   always @(*) begin
+      case (opcode)
+        `RV32_JAL : src_b_sel = `SRC_B_FOUR;
+        `RV32_JALR : src_b_sel = `SRC_B_FOUR;
+        `RV32_BRANCH : src_b_sel = `SRC_B_RS2;
+        `RV32_OP : src_b_sel = `SRC_B_RS2;
+        default : src_a_sel = `SRC_B_IMM;
+      endcase // case (opcode)
+   end // always @ begin
    
    always @(*) begin
       case (opcode)
@@ -134,6 +154,44 @@ module vscale_ctrl(
       endcase // case (opcode)
    end
 
+   assign add_or_sub = ((opcode == `RV32_OP) && (inst_DX[30])) ? `ALU_OP_SUB : `ALU_OP_ADD;
+   assign srl_or_sra = (inst_DX[30]) ? `ALU_OP_SRA : `ALU_OP_SRL;
+   
+   always @(*) begin
+      case (funct3)
+        `RV32_FUNCT3_ADD_SUB : alu_op_arith = add_or_sub;
+        `RV32_FUNCT3_SLL : alu_op_arith = `ALU_OP_SLL;
+        `RV32_FUNCT3_SLT : alu_op_arith = `ALU_OP_SLT;
+        `RV32_FUNCT3_SLTU : alu_op_arith = `ALU_OP_SLTU;
+        `RV32_FUNCT3_XOR : alu_op_arith = `ALU_OP_XOR;
+        `RV32_FUNCT3_SRA_SRL : alu_op_arith = srl_or_sra;
+        `RV32_FUNCT3_OP : alu_op_arith = `ALU_OP_OR;
+        `RV32_FUNCT3_AND : alu_op_arith = `ALU_OP_AND;
+        default : alu_op_arith = `ALU_OP_ADD;
+      endcase // case (funct3)
+   end // always @ begin
+
+   always @(*) begin
+      case (funct3)
+        `RV32_FUNCT3_BEQ : alu_op_branch = `ALU_OP_SEQ;
+        `RV32_FUNCT3_BNE : alu_op_branch = `ALU_OP_SNE;
+        `RV32_FUNCT3_BLT : alu_op_branch = `ALU_OP_SLT;
+        `RV32_FUNCT3_BGE : alu_op_branch = `ALU_OP_SGE;
+        `RV32_FUNCT3_BLTU : alu_op_branch = `ALU_OP_SLTU;
+        `RV32_FUNCT3_BGEU : alu_op_branch = `ALU_OP_SGEU;
+        default : alu_op_branch = `ALU_OP_SEQ;
+      endcase // case (funct3)
+   end // always @ begin
+
+   always @(*) begin
+      case (opcode)
+        `RV32_OP : alu_op = alu_op_arith;
+        `RV32_OP_IMM : alu_op = alu_op_arith;
+        `RV32_BRANCH : alu_op = alu_op_branch;
+        default : alu_op = `ALU_OP_ADD;
+      endcase // case (opcode)
+   end // always @ begin
+   //           
    assign reg_to_wr_DX = inst_DX[11:7];
    assign rs1_addr = inst_DX[19:15];
    assign rs2_addr = inst_DX[24:20];

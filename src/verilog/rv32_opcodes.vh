@@ -11,7 +11,7 @@
 `define RV32_CUSTOM_0 7'b0001011
 `define RV32_CUSTOM_1 7'b0101011
 `define RV32_NMSUB    7'b1001011
-// 1101011 is reserved
+// 7'b1101011 is reserved
 
 `define RV32_MISC_MEM 7'b0001111
 `define RV32_AMO      7'b0101111
@@ -25,10 +25,28 @@
 
 `define RV32_AUIPC    7'b0010111
 `define RV32_LUI      7'b0110111
-// 1010111 is reserved
-// 1110111 is reserved
+// 7'b1010111 is reserved
+// 7'b1110111 is reserved
 
-// 0011011 is RV64-specific
-// 0111011 is RV64-specific
-`define RV32_CUSTOM_2 1011011
-`define RV32_CUSTOM_3 1111011
+// 7'b0011011 is RV64-specific
+// 7'b0111011 is RV64-specific
+`define RV32_CUSTOM_2 7'b1011011
+`define RV32_CUSTOM_3 7'b1111011
+
+
+`define RV32_FUNCT3_ADD_SUB 0
+`define RV32_FUNCT3_SLL     1
+`define RV32_FUNCT3_SLT     2
+`define RV32_FUNCT3_SLTU    3
+`define RV32_FUNCT3_XOR     4
+`define RV32_FUNCT3_SRA_SRL 5
+`define RV32_FUNCT3_OR      6
+`define RV32_FUNCT3_AND     7
+
+
+`define RV32_FUNCT3_BEQ  0
+`define RV32_FUNCT3_BNE  1
+`define RV32_FUNCT3_BLT  4
+`define RV32_FUNCT3_BGE  5
+`define RV32_FUNCT3_BLTU 6
+`define RV32_FUNCT3_BGEU 7
