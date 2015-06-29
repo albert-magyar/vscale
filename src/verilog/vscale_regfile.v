@@ -1,16 +1,16 @@
 module vscale_regfile(
-		      clk,
-		      ra1,
-		      rd1,
-		      ra2,
-		      rd2,
-		      wen,
-		      wa,
-		      wd
-		      );
+                      input         clk,
+                      input [4:0]   ra1,
+                      output [31:0] rd1,
+                      input [4:0]   ra2,
+                      output [31:0] rd2,
+                      input         wen,
+                      input [4:0]   wa,
+                      input [31:0]  wd
+                      );
 
-   reg [31:0] data [31:0];
-   wire       wen_internal;
+   reg [31:0]                       data [31:0];
+   wire                             wen_internal;
 
    // fpga-style zero register
    assign wen_internal = wen && |wa;
@@ -20,10 +20,8 @@ module vscale_regfile(
 
    always @(posedge clk) begin
       if (wen_internal) begin
-	data[wa] <= wd;
+         data[wa] <= wd;
       end
    end
 
 endmodule // vscale_regfile
-
-   

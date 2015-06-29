@@ -10,3 +10,6 @@
 `define HASTI_RESP_OKAY 1'b0
 `define HASTI_RESP_ERROR 1'b1
 
+`define HASTI_SIZE_BYTE     3'b000
+`define HASTI_SIZE_HALFWORD 3'b001
+`define HASTI_SIZE_WORD     3'b010
