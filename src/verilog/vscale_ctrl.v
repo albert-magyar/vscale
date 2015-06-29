@@ -30,9 +30,9 @@ module vscale_ctrl(
                    output wire                        kill_DX,
                    output wire                        stall_WB,
                    output wire                        kill_WB,
-                   output wire                        exception
+                   output wire                        exception_WB
                    );
-   
+
    // IF stage ctrl pipeline registers
    reg                                                replay_IF;
    
@@ -63,6 +63,7 @@ module vscale_ctrl(
    // WB stage ctrl signals
    wire                              ex_WB;
 
+   wire 			     exception;
    
    
    // IF stage ctrl

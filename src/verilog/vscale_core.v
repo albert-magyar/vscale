@@ -3,20 +3,29 @@
 `include "rv32_opcodes.vh"
 
 module vscale_core(
-                   input         clk,
-                   input         reset,
-                   input         imem_wait,
-                   output [31:0] imem_addr,
-                   input [31:0]  imem_rdata,
-                   input         imem_badmem_e,
-                   input         dmem_wait,
-                   output        dmem_en,
-                   output        dmem_wen,
-                   output [2:0]  dmem_size,
-                   output [31:0] dmem_addr,
-                   output [31:0] dmem_wdata_delayed,
-                   input [31:0]  dmem_rdata,
-                   input         dmem_badmem_e
+                   input 			clk,
+                   input 			reset,
+                   input 			imem_wait,
+                   output [31:0] 		imem_addr,
+                   input [31:0] 		imem_rdata,
+                   input 			imem_badmem_e,
+                   input 			dmem_wait,
+                   output 			dmem_en,
+                   output 			dmem_wen,
+                   output [2:0] 		dmem_size,
+                   output [31:0] 		dmem_addr,
+                   output [31:0] 		dmem_wdata_delayed,
+                   input [31:0] 		dmem_rdata,
+                   input 			dmem_badmem_e,
+		   input 			htif_reset,
+		   input 			htif_pcr_req_valid,
+		   output 			htif_pcr_req_ready,
+		   input 			htif_pcr_req_rw,
+		   input [`CSR_ADDR_WIDTH-1:0] 	htif_pcr_req_addr,
+		   input [`HTIF_PCR_WIDTH-1:0] 	htif_pcr_req_data,
+		   output 			htif_pcr_resp_valid,
+		   input 			htif_pcr_resp_ready,
+		   output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
                    );
    
    wire [`PC_SRC_SEL_WIDTH-1:0]  PC_src_sel;   
@@ -49,7 +58,6 @@ module vscale_core(
    wire                          bypass_rs2;
    
    
-   
    reg [`XPR_LEN-1:0]            PC_WB;
    reg [`XPR_LEN-1:0]            alu_out_WB;
    reg [`XPR_LEN-1:0]            store_data_WB;
@@ -59,11 +67,17 @@ module vscale_core(
    wire [`REG_ADDR_WIDTH-1:0]    reg_to_wr_WB;
    wire                          wr_reg_WB;
    wire [`WB_SRC_SEL_WIDTH-1:0]  wb_src_sel_WB;   
-   
-   wire [`XPR_LEN-1:0]           csr_stvec;
-   
-   assign csr_stvec = 0; // TODO: fix stvec
 
+
+   // CSR management
+   wire [`CSR_ADDR_WIDTH-1:0] 	 csr_addr;
+   wire [`CSR_CMD_WIDTH-1:0] 	 csr_cmd;
+   wire [`XPR_LEN-1:0] 		 csr_wdata;
+   wire [`XPR_LEN-1:0] 		 csr_rdata;
+   wire 			 retire_WB;
+   wire 			 exception_WB;
+   wire [`XPR_LEN-1:0]           csr_mtvec;
+   
    vscale_ctrl ctrl(
                     .clk(clk),
                     .reset(reset),
@@ -92,7 +106,7 @@ module vscale_core(
                     .kill_DX(kill_DX),
                     .stall_WB(stall_WB),
                     .kill_WB(kill_WB),
-                    .exception(exception)
+                    .exception_WB(exception_WB)
                     );
    
    
@@ -103,7 +117,7 @@ module vscale_core(
                        .rs1_data(rs1_data),
                        .PC_IF(PC_IF),
                        .PC_DX(PC_DX),
-                       .csr_stvec(csr_stvec),
+                       .csr_mtvec(csr_mtvec),
                        .PC_PIF(PC_PIF)
                        );
    
@@ -197,6 +211,27 @@ module vscale_core(
    
    
    assign dmem_wdata_delayed = store_data_WB;
-   
-endmodule // vscale_dpath
 
+   module vscale_csr_file(
+                       .clk(clk),
+		       .reset(reset),
+		       .addr(csr_addr),
+		       .cmd(csr_cmd),
+		       .wdata(csr_wdata),
+		       .rdata(csr_rdata),
+		       .retire(retire_WB),
+		       .exception(exception_WB),
+		       .exception_PC(PC_WB),
+		       .mtvec(mtvec),
+		       .htif_reset(htif_reset),
+		       .htif_pcr_req_valid(htif_pcr_req_valid),
+		       .htif_pcr_req_ready(htif_pcr_req_ready),
+		       .htif_pcr_req_rw(htif_pcr_req_rw),
+		       .htif_pcr_req_addr(htif_pcr_req_addr),
+		       .htif_pcr_req_data(htif_pcr_req_data),
+		       .htif_pcr_resp_valid(htif_pcr_resp_valid),
+		       .htif_pcr_resp_ready(htif_pcr_resp_ready),
+		       .htif_pcr_resp_data(htif_pcr_resp_data)
+		       );
+   
+endmodule // vscale_core

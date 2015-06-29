@@ -1,3 +1,5 @@
+`define CSR_ADDR_WIDTH     12
+
 `define CSR_ADDR_CYCLE     12'hC00
 `define CSR_ADDR_TIME      12'hC01
 `define CSR_ADDR_INSTRET   12'hC02

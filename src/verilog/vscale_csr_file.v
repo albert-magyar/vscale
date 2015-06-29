@@ -3,43 +3,89 @@
 `include "vscale_ctrl_constants.vh"
 
 module vscale_csr_file(
-                       input                 clk,
-                       input                 reset,
-                       input [`XPR_LEN-1:0]  addr,
-                       input                 en,
-                       input                 wen,
-                       input [`XPR_LEN-1:0]  wdata,
-                       input [`XPR_LEN-1:0]  rdata,
-                       input                 retire_wb,
-                       input                 exception_wb,
-                       input [`XPR_LEN-1:0]  mepc, 
-                       output [`XPR_LEN-1:0] mtvec
-                       );
+                       input 			    clk,
+		       input 			    reset,
+		       input [`XPR_LEN-1:0] 	    addr,
+		       input [`CSR_CMD_WIDTH-1:0]   cmd,
+		       input [`XPR_LEN-1:0] 	    wdata,
+		       output [`XPR_LEN-1:0] 	    rdata,
+		       input 			    retire,
+		       input 			    exception,
+		       input [`XPR_LEN-1:0] 	    exception_PC,
+		       output [`XPR_LEN-1:0] 	    mtvec,
 
-   
+		       input 			    htif_reset,
+		       input 			    htif_pcr_req_valid,
+		       output 			    htif_pcr_req_ready,
+		       input 			    htif_pcr_req_rw,
+		       input [`CSR_ADDR_WIDTH-1:0]  htif_pcr_req_addr,
+		       input [`HTIF_PCR_WIDTH-1:0]  htif_pcr_req_data,
+		       output 			    htif_pcr_resp_valid,
+		       input 			    htif_pcr_resp_ready,
+		       output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
+		       );
 
-   reg [63:0]                                cycle_full;
-   reg [63:0]                                time_full;
-   reg [63:0]                                instret_full;
-   reg [5:0]                                 priv_stack;
-   reg [`XPR_LEN-1:0]                        mtvec;
-   reg                                       mtie;
-   reg                                       msie;
-   reg [`XPR_LEN-1:0]                        mtimecmp;
-   reg [63:0]                                mtime_full;
-   reg [`XPR_LEN-1:0]                        mscratch;
-   reg [`XPR_LEN-1:0]                        mepc;
-   reg [3:0]                                 mecode;
-   reg                                       mint;
-   reg [`XPR_LEN-1:0]                        mbadaddr;
+   localparam HTIF_STATE_IDLE = 0;
+   localparam HTIF_STATE_WAIT = 1;
    
-   wire [`XPR_LEN-1:0]                       mcpuid;
-   wire [`XPR_LEN-1:0]                       mimpid;
-   wire [`XPR_LEN-1:0]                       mhartid;
-   wire [`XPR_LEN-1:0]                       mstatus;
-   wire [`XPR_LEN-1:0]                       mtdeleg;
-   wire [`XPR_LEN-1:0]                       mie;
-   wire [`XPR_LEN-1:0]                       mcause;
+   reg [`HTIF_PCR_WIDTH-1:0] 			    htif_resp_data;
+   reg 						    htif_state;
+   reg 						    htif_resp_data_en;
+   reg 						    next_htif_state;
+   
+   reg [63:0] 					    cycle_full;
+   reg [63:0] 					    time_full;
+   reg [63:0] 					    instret_full;
+   reg [5:0] 					    priv_stack;
+   reg [`XPR_LEN-1:0] 				    mtvec;
+   reg 						    mtie;
+   reg 						    msie;
+   reg [`XPR_LEN-1:0] 				    mtimecmp;
+   reg [63:0] 					    mtime_full;
+   reg [`XPR_LEN-1:0] 				    mscratch;
+   reg [`XPR_LEN-1:0] 				    mepc;
+   reg [3:0] 					    mecode;
+   reg 						    mint;
+   reg [`XPR_LEN-1:0] 				    mbadaddr;
+   
+   wire [`XPR_LEN-1:0] 				    mcpuid;
+   wire [`XPR_LEN-1:0] 				    mimpid;
+   wire [`XPR_LEN-1:0] 				    mhartid;
+   wire [`XPR_LEN-1:0] 				    mstatus;
+   wire [`XPR_LEN-1:0] 				    mtdeleg;
+   wire [`XPR_LEN-1:0] 				    mie;
+   wire [`XPR_LEN-1:0] 				    mcause;
+   
+   always @(posedge clk) begin
+      if (htif_reset)
+	htif_state <= HTIF_STATE_IDLE;
+      else
+	htif_state <= next_htif_state;
+      if (htif_resp_data_en)
+	htif_resp_data <= rdata;
+   end
+
+   always @(*) begin
+      htif_resp_data_en = 1'b0;
+      next_htif_state = htif_state;
+      case (htif_state)
+	HTIF_STATE_IDLE : begin
+	   if (htif_req_valid) begin
+	      htif_resp_data_en = 1'b1;
+	      next_htif_state = HTIF_STATE_WAIT;
+	   end
+	end
+	HTIF_STATE_WAIT : begin
+	   if (htif_resp_ready) begin
+	      next_htif_state = HTIF_STATE_IDLE;
+	   end
+	end
+      endcase // case (htif_state)
+   end // always @ begin
+
+   assign htif_req_ready = (htif_state == HTIF_STATE_IDLE);
+   assign htif_resp_valid = (htif_state == HTIF_STATE_WAIT);
+   
    
    assign mcpuid = (1 << 20) || (1 << 8); // 'I' and 'U' bits set
    assign mimpid = 32'h8000;

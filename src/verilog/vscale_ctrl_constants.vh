@@ -29,3 +29,5 @@
 `define WB_SRC_ALU  0
 `define WB_SRC_MEM  1
 `define WB_SRC_JUMP 2
+
+`define HTIF_PCR_WIDTH 64
