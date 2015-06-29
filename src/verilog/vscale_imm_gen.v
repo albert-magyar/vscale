@@ -1,9 +1,9 @@
 `include "vscale_ctrl_constants.vh"
 
 module vscale_imm_gen(
-                      input [31:0]      inst,
-                      input [2:0]       imm_type,
-                      output reg [31:0] imm
+                      input [`XPR_LEN-1:0]        inst,
+                      input [`IMM_TYPE_WIDTH-1:0] imm_type,
+                      output reg [`XPR_LEN-1:0]   imm
                       );
 
    always @(*) begin

@@ -1,24 +1,24 @@
 `include "vscale_alu_ops.vh"
 
 module vscale_alu(
-                  input [3:0]       op,
-                  input [31:0]      in1,
-                  input [31:0]      in2,
-                  output reg [31:0] out
+                  input [`ALU_OP_WIDTH-1:0] op,
+                  input [`XPR_LEN-1:0]      in1,
+                  input [`XPR_LEN-1:0]      in2,
+                  output reg [`XPR_LEN-1:0] out
                   );
 
-   wire [4:0]                       shamt;
+   wire [`SHAMT_WIDTH-1:0]                  shamt;
    
-   assign shamt = in2[4:0];
+   assign shamt = in2[`SHAMT_WIDTH-1:0];
    
    always @(*) begin
       case (op)
         `ALU_OP_ADD : out = in1 + in2;
-        `ALU_OP_SL : out = in1 << shamt;
+        `ALU_OP_SLL : out = in1 << shamt;
         `ALU_OP_XOR : out = in1 ^ in2;
         `ALU_OP_OR : out = in1 | in2;
         `ALU_OP_AND : out = in1 & in2;
-        `ALU_OP_SR : out = in1 >> shamt;
+        `ALU_OP_SRL : out = in1 >> shamt;
         `ALU_OP_SEQ : out = in1 == in2;
         `ALU_OP_SNE : out = in1 != in2;
         `ALU_OP_SUB : out = in1 - in2;

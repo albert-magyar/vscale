@@ -3,54 +3,58 @@
 `include "rv32_opcodes.vh"
 
 module vscale_ctrl(
-                   input             clk,
-                   input             reset,
-                   input [31:0]      inst_DX,
-                   input             imem_wait,
-                   input             imem_badmem_e,
-                   input             dmem_wait,
-                   input             dmem_badmem_e,
-                   input             cmp_true,
-                   output reg [2:0]  PC_src_sel,
-                   output reg [2:0]  imm_type,
-                   output            bypass_rs1,
-                   output            bypass_rs2,
-                   output reg [2:0]  src_a_sel,
-                   output reg [2:0]  src_b_sel,
-                   output reg [3:0]  alu_op,
-                   output wire       dmem_en,
-                   output wire       dmem_wen,
-                   output wire [2:0] dmem_size,
-                   output wire       wr_reg_WB,
-                   output reg [4:0]  reg_to_wr_WB,
-                   output reg [2:0]  wb_src_WB,
-                   output wire       stall_IF,
-                   output wire       kill_IF,
-                   output wire       stall_DX,
-                   output wire       kill_DX,
-                   output wire       stall_WB,
-                   output wire       kill_WB,
-                   output wire       exception
+                   input                              clk,
+                   input                              reset,
+                   input [`INST_WIDTH-1:0]            inst_DX,
+                   input                              imem_wait,
+                   input                              imem_badmem_e,
+                   input                              dmem_wait,
+                   input                              dmem_badmem_e,
+                   input                              cmp_true,
+                   output reg [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
+                   output reg [`IMM_TYPE_WIDTH-1:0]   imm_type,
+                   output                             bypass_rs1,
+                   output                             bypass_rs2,
+                   output reg [`SRC_A_SEL_WIDTH-1:0]  src_a_sel,
+                   output reg [`SRC_B_SEL_WIDTH-1:0]  src_b_sel,
+                   output reg [`ALU_OP_WIDTH-1:0]     alu_op,
+                   output wire                        dmem_en,
+                   output wire                        dmem_wen,
+                   output wire [2:0]                  dmem_size,
+                   output wire                        wr_reg_WB,
+                   output reg [`REG_ADDR_WIDTH-1:0]   reg_to_wr_WB,
+                   output reg [`WB_SRC_SEL_WIDTH-1:0] wb_src_sel_WB,
+                   output wire                        stall_IF,
+                   output wire                        kill_IF,
+                   output wire                        stall_DX,
+                   output wire                        kill_DX,
+                   output wire                        stall_WB,
+                   output wire                        kill_WB,
+                   output wire                        exception
                    );
-
+   
    // IF stage ctrl pipeline registers
-   reg                               replay_IF;
-
+   reg                                                replay_IF;
+   
    // IF stage ctrl signals
-   wire                              ex_IF;
+   wire                                               ex_IF;
    
    // DX stage ctrl pipeline registers
-   reg                               had_ex_DX;
+   reg                                                had_ex_DX;
    
    // DX stage ctrl signals
-   wire [6:0]                        opcode = inst_DX[6:0];
-   wire [6:0]                        funct7 = inst_DX[31:25];
-   wire [2:0]                        funct3 = inst_DX[14:12];
-   wire                              redirect;
-   reg                               wr_reg_DX;
-   wire [5:0]                        reg_to_wr_DX = inst_DX[11:7];
-   wire                              wb_src_DX;
-   wire                              ex_DX;
+   wire [6:0]                                         opcode = inst_DX[6:0];
+   wire [6:0]                                         funct7 = inst_DX[31:25];
+   wire [2:0]                                         funct3 = inst_DX[14:12];
+   wire [`ALU_OP_WIDTH-1:0]                           add_or_sub;
+   wire [`ALU_OP_WIDTH-1:0]                           srl_or_sra;
+   reg [`ALU_OP_WIDTH-1:0]                            alu_op_arith;
+   reg [`ALU_OP_WIDTH-1:0]                            alu_op_branch;
+   wire                                               redirect;
+   reg                                                wr_reg_DX;
+   wire [`REG_ADDR_WIDTH-1:0]                         reg_to_wr_DX = inst_DX[11:7];
+   wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
+   wire                                               ex_DX;
    
    // WB stage ctrl pipeline registers
    reg                               wr_reg_unkilled_WB;
@@ -165,7 +169,7 @@ module vscale_ctrl(
         `RV32_FUNCT3_SLTU : alu_op_arith = `ALU_OP_SLTU;
         `RV32_FUNCT3_XOR : alu_op_arith = `ALU_OP_XOR;
         `RV32_FUNCT3_SRA_SRL : alu_op_arith = srl_or_sra;
-        `RV32_FUNCT3_OP : alu_op_arith = `ALU_OP_OR;
+        `RV32_FUNCT3_OR : alu_op_arith = `ALU_OP_OR;
         `RV32_FUNCT3_AND : alu_op_arith = `ALU_OP_AND;
         default : alu_op_arith = `ALU_OP_ADD;
       endcase // case (funct3)
@@ -196,7 +200,7 @@ module vscale_ctrl(
    assign rs1_addr = inst_DX[19:15];
    assign rs2_addr = inst_DX[24:20];
 
-   assign wb_src_DX = (opcode == `RV32_LOAD) ? `WB_SRC_MEM : (jal || jalr) ? `WB_SRC_JUMP : `WB_SRC_ALU;
+   assign wb_src_sel_DX = (opcode == `RV32_LOAD) ? `WB_SRC_MEM : (jal || jalr) ? `WB_SRC_JUMP : `WB_SRC_ALU;
    assign dmem_en = ((opcode == `RV32_LOAD) || (opcode == `RV32_STORE)) && !kill_DX;
    assign dmem_wen = (opcode == `RV32_STORE) && !kill_DX;
    assign dmem_size = funct3;
@@ -209,7 +213,7 @@ module vscale_ctrl(
          had_ex_WB <= 0;
       end else if (!stall_WB) begin
          wr_reg_unkilled_WB <= wr_reg_DX;
-         wb_src_WB <= wb_src_DX;
+         wb_src_sel_WB <= wb_src_sel_DX;
          had_ex_WB <= ex_DX;
          reg_to_wr_WB <= reg_to_wr_DX;
       end
@@ -225,11 +229,11 @@ module vscale_ctrl(
    // Hazard logic
    
    wire raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_DX) && (src_a_sel == `SRC_A_RS1);
-   assign bypass_rs1 = (wb_src_WB == `WB_SRC_ALU) && raw_rs1;
+   assign bypass_rs1 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
    
    wire raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_DX) && (src_b_sel == `SRC_B_RS2);
-   assign bypass_rs2 = (wb_src_WB == `WB_SRC_ALU) && raw_rs1;
+   assign bypass_rs2 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
    
-   assign load_use = (wb_src_WB == `WB_SRC_MEM) && (raw_rs1 || raw_rs2);
+   assign load_use = (wb_src_sel_WB == `WB_SRC_MEM) && (raw_rs1 || raw_rs2);
    
 endmodule // vscale_ctrl

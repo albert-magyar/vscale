@@ -1,4 +1,5 @@
 `include "vscale_ctrl_constants.vh"
+`include "vscale_alu_ops.vh"
 
 module vscale_core(
                    input         clk,
@@ -17,48 +18,48 @@ module vscale_core(
                    input         dmem_badmem_e
                    );
    
-   wire [2:0]                    PC_src_sel;   
-   wire [31:0]                   PC_PIF;
+   wire [`PC_SRC_SEL_WIDTH-1:0]  PC_src_sel;   
+   wire [`XPR_LEN-1:0]           PC_PIF;
    
    
-   reg [31:0]                    PC_IF;
+   reg [`XPR_LEN-1:0]            PC_IF;
    wire                          kill_IF;
    wire                          stall_IF;
    
    
-   reg [31:0]                    PC_DX;
-   reg [31:0]                    inst_DX;
+   reg [`XPR_LEN-1:0]            PC_DX;
+   reg [`INST_WIDTH-1:0]         inst_DX;
    
    wire                          stall_DX;
-   wire [2:0]                    imm_type;
-   wire [31:0]                   imm;
-   wire [2:0]                    src_a_sel; // fix width
-   wire [2:0]                    src_b_sel; // fix width 
-   wire [4:0]                    rs1_addr;
-   wire [31:0]                   rs1_data;
-   wire [4:0]                    rs2_addr;
-   wire [31:0]                   rs2_data; 
-   wire [3:0]                    alu_op;
-   wire [31:0]                   alu_src_a;
-   wire [31:0]                   alu_src_b;
-   wire [31:0]                   alu_out; 
+   wire [`IMM_TYPE_WIDTH-1:0]    imm_type;
+   wire [`XPR_LEN-1:0]           imm;
+   wire [`SRC_A_SEL_WIDTH-1:0]   src_a_sel;
+   wire [`SRC_B_SEL_WIDTH-1:0]   src_b_sel;
+   wire [`REG_ADDR_WIDTH-1:0]    rs1_addr;
+   wire [`XPR_LEN-1:0]           rs1_data;
+   wire [`REG_ADDR_WIDTH-1:0]    rs2_addr;
+   wire [`XPR_LEN-1:0]           rs2_data; 
+   wire [`ALU_OP_WIDTH-1:0]      alu_op;
+   wire [`XPR_LEN-1:0]           alu_src_a;
+   wire [`XPR_LEN-1:0]           alu_src_b;
+   wire [`XPR_LEN-1:0]           alu_out; 
    wire                          cmp_true;
    wire                          bypass_rs1;
    wire                          bypass_rs2;
    
    
    
-   reg                           PC_WB;
-   reg [31:0]                    alu_out_WB;
-   reg [31:0]                    store_data_WB;
+   reg [`XPR_LEN-1:0]            PC_WB;
+   reg [`XPR_LEN-1:0]            alu_out_WB;
+   reg [`XPR_LEN-1:0]            store_data_WB;
    
    wire                          stall_WB;
-   reg [31:0]                    wb_data_WB;
-   wire [4:0]                    reg_to_wr_WB;
+   reg [`XPR_LEN-1:0]            wb_data_WB;
+   wire [`REG_ADDR_WIDTH-1:0]    reg_to_wr_WB;
    wire                          wr_reg_WB;
-   wire [2:0]                    wb_src_WB;   
+   wire [`WB_SRC_SEL_WIDTH-1:0]  wb_src_sel_WB;   
    
-   wire [31:0]                   csr_stvec;
+   wire [`XPR_LEN-1:0]           csr_stvec;
    
    assign csr_stvec = 0; // TODO: fix stvec
 
@@ -83,7 +84,7 @@ module vscale_core(
                     .dmem_size(dmem_size),
                     .wr_reg_WB(wr_reg_WB),
                     .reg_to_wr_WB(reg_to_wr_WB),
-                    .wb_src_WB(wb_src_WB),
+                    .wb_src_sel_WB(wb_src_sel_WB),
                     .stall_IF(stall_IF),
                     .kill_IF(kill_IF),
                     .stall_DX(stall_DX),
@@ -186,7 +187,7 @@ module vscale_core(
    end
    
    always @(*) begin
-      case (wb_src_WB)
+      case (wb_src_sel_WB)
         `WB_SRC_ALU : wb_data_WB = alu_out_WB;
         `WB_SRC_MEM : wb_data_WB = dmem_rdata;
         default : wb_data_WB = alu_out_WB;

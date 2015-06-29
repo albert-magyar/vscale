@@ -1,3 +1,11 @@
+// Width-related constants
+`define INST_WIDTH     32
+`define REG_ADDR_WIDTH  5
+`define XPR_LEN        32
+
+
+// Opcodes
+
 `define RV32_LOAD     7'b0000011
 `define RV32_STORE    7'b0100011
 `define RV32_MADD     7'b1000011
@@ -33,6 +41,7 @@
 `define RV32_CUSTOM_2 7'b1011011
 `define RV32_CUSTOM_3 7'b1111011
 
+// Arithmetic FUNCT3 encodings
 
 `define RV32_FUNCT3_ADD_SUB 0
 `define RV32_FUNCT3_SLL     1
@@ -43,6 +52,7 @@
 `define RV32_FUNCT3_OR      6
 `define RV32_FUNCT3_AND     7
 
+// Branch FUNCT3 encodings
 
 `define RV32_FUNCT3_BEQ  0
 `define RV32_FUNCT3_BNE  1
