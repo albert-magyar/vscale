@@ -31,7 +31,7 @@ module vscale_hasti_bridge(
    assign hburst = `HASTI_BURST_SINGLE;
    assign hmastlock = `HASTI_MASTER_NO_LOCK;
    assign hprot = 0; // possibly change
-   assign htrans = core_mem_en ? `HASTI_NONSEQ : `HASTI_IDLE;
+   assign htrans = core_mem_en ? `HASTI_TRANS_NONSEQ : `HASTI_TRANS_IDLE;
    assign hwdata = core_mem_wdata_delayed;
    assign core_mem_rdata = hrdata;
    assign core_mem_wait = ~hready;

@@ -1,3 +1,5 @@
+`include "vscale_ctrl_constants.vh"
+
 module vscale_imm_gen(
 		      input [31:0] 	inst,
 		      input [2:0] 	imm_type,
