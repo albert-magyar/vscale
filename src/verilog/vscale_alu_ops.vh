@@ -1,3 +1,5 @@
+`define ALU_OP_WIDTH 4
+
 `define ALU_OP_ADD  0
 `define ALU_OP_SLL  1
 `define ALU_OP_XOR  4

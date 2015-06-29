@@ -1,4 +1,5 @@
 `include "vscale_ctrl_constants.vh"
+`include "rv32_opcodes.vh"
 
 module vscale_imm_gen(
                       input [`XPR_LEN-1:0]        inst,

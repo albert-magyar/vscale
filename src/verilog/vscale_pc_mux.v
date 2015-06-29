@@ -1,8 +1,9 @@
 `include "vscale_ctrl_constants.vh"
+`include "rv32_opcodes.vh"
 
 module vscale_PC_mux(
                      input [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
-                     input [`INST_LEN-1:0]           inst_DX,
+                     input [`INST_WIDTH-1:0]           inst_DX,
                      input [`XPR_LEN-1:0]          alu_out,
                      input [`XPR_LEN-1:0]          rs1_data,
                      input [`XPR_LEN-1:0]          PC_IF,

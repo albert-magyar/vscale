@@ -1,29 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 `define CSR_ADDR_CYCLE     12'hC00
 `define CSR_ADDR_TIME      12'hC01
 `define CSR_ADDR_INSTRET   12'hC02
@@ -51,3 +25,6 @@
 `define CSR_ADDR_CYCLEHW   12'h980
 `define CSR_ADDR_TIMEHW    12'h981
 `define CSR_ADDR_INSTRETHW 12'h982
+
+
+`define ECODE_INST_ADDR_MISALIGNED 4'h0

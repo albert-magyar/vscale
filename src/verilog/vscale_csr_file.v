@@ -1,3 +1,7 @@
+`include "rv32_opcodes.vh"
+`include "vscale_csr_addr_map.vh"
+`include "vscale_ctrl_constants.vh"
+
 module vscale_csr_file(
                        input                 clk,
                        input                 reset,

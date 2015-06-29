@@ -2,7 +2,7 @@
 `define INST_WIDTH     32
 `define REG_ADDR_WIDTH  5
 `define XPR_LEN        32
-
+`define SHAMT_WIDTH     5
 
 // Opcodes
 

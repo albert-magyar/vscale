@@ -1,5 +1,6 @@
 `include "vscale_ctrl_constants.vh"
 `include "vscale_alu_ops.vh"
+`include "rv32_opcodes.vh"
 
 module vscale_core(
                    input         clk,
