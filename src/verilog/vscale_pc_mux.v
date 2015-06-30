@@ -8,7 +8,7 @@ module vscale_PC_mux(
                      input [`XPR_LEN-1:0]          rs1_data,
                      input [`XPR_LEN-1:0]          PC_IF,
                      input [`XPR_LEN-1:0]          PC_DX,
-                     input [`XPR_LEN-1:0]          csr_stvec,
+                     input [`XPR_LEN-1:0]          handler_PC,
                      output reg [`XPR_LEN-1:0]     PC_PIF
                      );
 
@@ -24,7 +24,7 @@ module vscale_PC_mux(
         `PC_REG_TARGET : PC_PIF = rs1_data;
         `PC_BRANCH_TARGET : PC_PIF = PC_branch;
         `PC_REPLAY : PC_PIF = PC_IF;
-        `PC_STVEC : PC_PIF = csr_stvec;
+        `PC_HANDLER : PC_PIF = handler_PC;
         default : PC_PIF = PC_plus_4;
       endcase // case (PC_src_sel)
    end // always @ (*)

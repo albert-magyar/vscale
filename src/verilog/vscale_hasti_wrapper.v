@@ -1,4 +1,5 @@
 `include "vscale_hasti_constants.vh"
+`include "vscale_csr_addr_map.vh"
 
 module vscale_hasti_wrapper(
                             input 			 hclk,

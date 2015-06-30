@@ -28,5 +28,14 @@
 `define CSR_ADDR_TIMEHW    12'h981
 `define CSR_ADDR_INSTRETHW 12'h982
 
+`define CSR_CMD_WIDTH 4
+`define CSR_IDLE      0
+`define CSR_READ      1
+`define CSR_WRITE     2
+`define CSR_SET       3
+`define CSR_CLEAR     4
 
-`define ECODE_INST_ADDR_MISALIGNED 4'h0
+`define HTIF_PCR_WIDTH 64
+
+`define EXCEPTION_CODE_WIDTH       4
+`define ECODE_INST_ADDR_MISALIGNED 0

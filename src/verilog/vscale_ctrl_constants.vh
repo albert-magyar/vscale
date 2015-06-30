@@ -17,7 +17,7 @@
 `define PC_JAL_TARGET    2
 `define PC_REG_TARGET    3
 `define PC_REPLAY        4
-`define PC_STVEC         5
+`define PC_HANDLER       5
 
 `define IMM_TYPE_WIDTH 2
 `define IMM_I 0

@@ -3,34 +3,38 @@
 `include "rv32_opcodes.vh"
 
 module vscale_ctrl(
-                   input                              clk,
-                   input                              reset,
-                   input [`INST_WIDTH-1:0]            inst_DX,
-                   input                              imem_wait,
-                   input                              imem_badmem_e,
-                   input                              dmem_wait,
-                   input                              dmem_badmem_e,
-                   input                              cmp_true,
+                   input 			      clk,
+                   input 			      reset,
+                   input [`INST_WIDTH-1:0] 	      inst_DX,
+                   input 			      imem_wait,
+                   input 			      imem_badmem_e,
+                   input 			      dmem_wait,
+                   input 			      dmem_badmem_e,
+                   input 			      cmp_true,
                    output reg [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
                    output reg [`IMM_TYPE_WIDTH-1:0]   imm_type,
-                   output                             bypass_rs1,
-                   output                             bypass_rs2,
+                   output 			      bypass_rs1,
+                   output 			      bypass_rs2,
                    output reg [`SRC_A_SEL_WIDTH-1:0]  src_a_sel,
                    output reg [`SRC_B_SEL_WIDTH-1:0]  src_b_sel,
                    output reg [`ALU_OP_WIDTH-1:0]     alu_op,
-                   output wire                        dmem_en,
-                   output wire                        dmem_wen,
-                   output wire [2:0]                  dmem_size,
-                   output wire                        wr_reg_WB,
+                   output wire 			      dmem_en,
+                   output wire 			      dmem_wen,
+                   output wire [2:0] 		      dmem_size,
+                   output wire 			      wr_reg_WB,
                    output reg [`REG_ADDR_WIDTH-1:0]   reg_to_wr_WB,
                    output reg [`WB_SRC_SEL_WIDTH-1:0] wb_src_sel_WB,
-                   output wire                        stall_IF,
-                   output wire                        kill_IF,
-                   output wire                        stall_DX,
-                   output wire                        kill_DX,
-                   output wire                        stall_WB,
-                   output wire                        kill_WB,
-                   output wire                        exception_WB
+                   output wire 			      stall_IF,
+                   output wire 			      kill_IF,
+                   output wire 			      stall_DX,
+                   output wire 			      kill_DX,
+                   output wire 			      stall_WB,
+                   output wire 			      kill_WB,
+                   output wire 			      exception_WB,
+		   output wire 			      exception_code_WB,
+		   output wire 			      retire_WB,
+		   output wire [`CSR_CMD_WIDTH-1:0]   csr_cmd,
+		   output wire 			      csr_imm_sel
                    );
 
    // IF stage ctrl pipeline registers
@@ -62,8 +66,8 @@ module vscale_ctrl(
 
    // WB stage ctrl signals
    wire                              ex_WB;
-
-   wire 			     exception;
+   wire exception;
+   assign exception = ex_WB;
    
    
    // IF stage ctrl
@@ -102,7 +106,7 @@ module vscale_ctrl(
    
    always @(*) begin
       if (exception) begin
-         PC_src_sel = `PC_STVEC;
+         PC_src_sel = `PC_HANDLER;
       end else if (branch_taken) begin
          PC_src_sel = `PC_BRANCH_TARGET;
       end else if (jal) begin
@@ -223,7 +227,7 @@ module vscale_ctrl(
    assign kill_WB = stall_WB || ex_WB;
    assign stall_WB = dmem_wait;
    assign ex_WB = had_ex_WB || (dmem_badmem_e && !stall_WB);
-   assign exception = ex_WB;   
+   assign exception_WB = ex_WB;
    assign wr_reg_WB = wr_reg_unkilled_WB && !kill_WB;
    
    

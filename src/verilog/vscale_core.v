@@ -1,6 +1,7 @@
 `include "vscale_ctrl_constants.vh"
 `include "vscale_alu_ops.vh"
 `include "rv32_opcodes.vh"
+`include "vscale_csr_addr_map.vh"
 
 module vscale_core(
                    input 			clk,
@@ -72,11 +73,12 @@ module vscale_core(
    // CSR management
    wire [`CSR_ADDR_WIDTH-1:0] 	 csr_addr;
    wire [`CSR_CMD_WIDTH-1:0] 	 csr_cmd;
+   wire 			 csr_imm_sel;
    wire [`XPR_LEN-1:0] 		 csr_wdata;
    wire [`XPR_LEN-1:0] 		 csr_rdata;
    wire 			 retire_WB;
    wire 			 exception_WB;
-   wire [`XPR_LEN-1:0]           csr_mtvec;
+   wire [`XPR_LEN-1:0]           handler_PC;
    
    vscale_ctrl ctrl(
                     .clk(clk),
@@ -107,6 +109,10 @@ module vscale_core(
                     .stall_WB(stall_WB),
                     .kill_WB(kill_WB),
                     .exception_WB(exception_WB)
+		    .exception_code_WB(exception_code_WB),
+		    .retire_WB(retire_WB),
+		    .csr_cmd(csr_cmd),
+		    .csr_imm_sel(csr_imm_sel)
                     );
    
    
@@ -117,7 +123,7 @@ module vscale_core(
                        .rs1_data(rs1_data),
                        .PC_IF(PC_IF),
                        .PC_DX(PC_DX),
-                       .csr_mtvec(csr_mtvec),
+                       .handler_PC(handler_PC),
                        .PC_PIF(PC_PIF)
                        );
    
@@ -212,7 +218,13 @@ module vscale_core(
    
    assign dmem_wdata_delayed = store_data_WB;
 
-   module vscale_csr_file(
+
+   // CSR
+   
+   assign csr_addr = inst_DX[31:20];
+   assign csr_wdata = (csr_imm_sel) ? inst_DX[19:15] : rs1_data;
+
+   vscale_csr_file csr(
                        .clk(clk),
 		       .reset(reset),
 		       .addr(csr_addr),
@@ -221,8 +233,10 @@ module vscale_core(
 		       .rdata(csr_rdata),
 		       .retire(retire_WB),
 		       .exception(exception_WB),
+  		       .exception_code(exception_code_WB),
+		       .exception_load_addr(alu_out_WB),
 		       .exception_PC(PC_WB),
-		       .mtvec(mtvec),
+		       .handler_PC(handler_PC),
 		       .htif_reset(htif_reset),
 		       .htif_pcr_req_valid(htif_pcr_req_valid),
 		       .htif_pcr_req_ready(htif_pcr_req_ready),

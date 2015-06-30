@@ -5,14 +5,16 @@
 module vscale_csr_file(
                        input 			    clk,
 		       input 			    reset,
-		       input [`XPR_LEN-1:0] 	    addr,
+		       input [`CSR_ADDR_WIDTH-1:0] 	    addr,
 		       input [`CSR_CMD_WIDTH-1:0]   cmd,
 		       input [`XPR_LEN-1:0] 	    wdata,
-		       output [`XPR_LEN-1:0] 	    rdata,
+		       output reg [`XPR_LEN-1:0] 	    rdata,
 		       input 			    retire,
 		       input 			    exception,
+		       input [`EXCEPTION_CODE_WIDTH-1:0] exception_code,
+		       input [`XPR_LEN-1:0] exception_load_addr,
 		       input [`XPR_LEN-1:0] 	    exception_PC,
-		       output [`XPR_LEN-1:0] 	    mtvec,
+		       output [`XPR_LEN-1:0] 	    handler_PC,
 
 		       input 			    htif_reset,
 		       input 			    htif_pcr_req_valid,
@@ -40,13 +42,18 @@ module vscale_csr_file(
    reg [`XPR_LEN-1:0] 				    mtvec;
    reg 						    mtie;
    reg 						    msie;
+   reg mtip;
+   reg msip;
    reg [`XPR_LEN-1:0] 				    mtimecmp;
    reg [63:0] 					    mtime_full;
    reg [`XPR_LEN-1:0] 				    mscratch;
    reg [`XPR_LEN-1:0] 				    mepc;
-   reg [3:0] 					    mecode;
+   reg [`EXCEPTION_CODE_WIDTH-1:0] 					    mecode;
    reg 						    mint;
    reg [`XPR_LEN-1:0] 				    mbadaddr;
+   
+   wire prv;
+   wire ie;
    
    wire [`XPR_LEN-1:0] 				    mcpuid;
    wire [`XPR_LEN-1:0] 				    mimpid;
@@ -54,7 +61,36 @@ module vscale_csr_file(
    wire [`XPR_LEN-1:0] 				    mstatus;
    wire [`XPR_LEN-1:0] 				    mtdeleg;
    wire [`XPR_LEN-1:0] 				    mie;
+   wire [`XPR_LEN-1:0] mip;
    wire [`XPR_LEN-1:0] 				    mcause;
+   
+   wire timer_expired;
+   
+   reg wen_internal;
+   reg defined;
+   reg [`XPR_LEN-1:0] wdata_internal;
+   reg trap;
+   reg interrupt_taken;
+   reg [`EXCEPTION_CODE_WIDTH-1:0] interrupt_code;
+   
+   assign handler_PC = mtvec + (prv << 5);
+   
+   assign prv = priv_stack[2:1];
+   assign ie = priv_stack[0];
+   
+   // TODO: setup internal wen, internal wdata
+   always @(*) begin
+      wen_internal = 0;
+      wdata_internal = wdata;
+   end
+   
+   // TODO: setup trap,timer,  iterrupt taken lines
+   always @(*) begin
+      trap = 0;
+      interrupt_taken = 0;
+      interrupt_code = 0;
+      end
+      
    
    always @(posedge clk) begin
       if (htif_reset)
@@ -70,22 +106,22 @@ module vscale_csr_file(
       next_htif_state = htif_state;
       case (htif_state)
 	HTIF_STATE_IDLE : begin
-	   if (htif_req_valid) begin
+	   if (htif_pcr_req_valid) begin
 	      htif_resp_data_en = 1'b1;
 	      next_htif_state = HTIF_STATE_WAIT;
 	   end
 	end
 	HTIF_STATE_WAIT : begin
-	   if (htif_resp_ready) begin
+	   if (htif_pcr_resp_ready) begin
 	      next_htif_state = HTIF_STATE_IDLE;
 	   end
 	end
       endcase // case (htif_state)
    end // always @ begin
 
-   assign htif_req_ready = (htif_state == HTIF_STATE_IDLE);
-   assign htif_resp_valid = (htif_state == HTIF_STATE_WAIT);
-   
+   assign htif_pcr_req_ready = (htif_state == HTIF_STATE_IDLE);
+   assign htif_pcr_resp_valid = (htif_state == HTIF_STATE_WAIT);
+   assign htif_pcr_resp_data = htif_resp_data;
    
    assign mcpuid = (1 << 20) || (1 << 8); // 'I' and 'U' bits set
    assign mimpid = 32'h8000;
@@ -95,7 +131,7 @@ module vscale_csr_file(
       if (reset) begin
          priv_stack <= 6'b000110;
       end else if (wen_internal && addr == `CSR_ADDR_MSTATUS) begin
-         priv_stack <= wdata[5:0];
+         priv_stack <= wdata_internal[5:0];
       end else if (trap) begin
          // no delegation to U means all traps go to M
          priv_stack <= {priv_stack[2:0],2'b11,1'b0};
@@ -107,6 +143,8 @@ module vscale_csr_file(
 
    assign mtdeleg = 0;
 
+    assign timer_expired = (mtimecmp == mtime_full[31:0]);
+
    always @(posedge clk) begin
       if (reset) begin
          mtip <= 0;
@@ -117,8 +155,8 @@ module vscale_csr_file(
          if (wen_internal && addr == `CSR_ADDR_MTIMECMP)
            mtip <= 0;
          if (wen_internal && addr == `CSR_ADDR_MIP) begin
-            mtip <= wdata[7];
-            msip <= wdata[3];
+            mtip <= wdata_internal[7];
+            msip <= wdata_internal[3];
          end
       end // else: !if(reset)
    end // always @ (posedge clk)
@@ -130,17 +168,17 @@ module vscale_csr_file(
          mtie <= 0;
          msie <= 0;
       end else if (wen_internal && addr == `CSR_ADDR_MIE) begin
-         mtie <= wdata[7];
-         msie <= wdata[3];
+         mtie <= wdata_internal[7];
+         msie <= wdata_internal[3];
       end
    end // always @ (posedge clk)
    assign mie = {mtie,3'b0,msie,3'b0};
    
    always @(posedge clk) begin
-      if (exception_WB || interrupt_taken)
-        mepc <= PC_WB && {{30{1'b1}},2'b0};      
+      if (exception || interrupt_taken)
+        mepc <= exception_PC && {{30{1'b1}},2'b0};      
       if (wen_internal && addr == `CSR_ADDR_MEPC)
-        mepc <= wdata && {{30{1'b1}},2'b0};
+        mepc <= wdata_internal && {{30{1'b1}},2'b0};
    end
 
    always @(posedge clk) begin
@@ -148,28 +186,28 @@ module vscale_csr_file(
          mecode <= 0;
          mint <= 0;
       end else if (wen_internal && addr == `CSR_ADDR_MCAUSE) begin
-         mecode <= wdata[3:0];
-         mint <= wdata[31];
+         mecode <= wdata_internal[3:0];
+         mint <= wdata_internal[31];
       end else begin
          if (interrupt_taken) begin
             mecode <= interrupt_code;
             mint <= 1'b1;
-         end else if (exception_WB) begin 
-            mecode <= exception_code_WB;
+         end else if (exception) begin 
+            mecode <= exception_code;
             mint <= 1'b0;
          end
       end // else: !if(reset)
    end // always @ (posedge clk)
    assign mcause = {mint,27'b0,mecode};
 
-   assign code_imem = (exception_code_WB == `ECODE_INST_ADDR_MISALIGNED)
-     || (exception_code_WB == `ECODE_INST_ADDR_MISALIGNED);
+   assign code_imem = (exception_code == `ECODE_INST_ADDR_MISALIGNED)
+     || (exception_code == `ECODE_INST_ADDR_MISALIGNED);
    
    always @(posedge clk) begin
-      if (exception_WB)
-        mbadaddr <= (code_imem) ? PC_WB : alu_out_WB;
+      if (exception)
+        mbadaddr <= (code_imem) ? exception_PC : exception_load_addr;
       if (wen_internal && addr == `CSR_ADDR_MBADADDR)
-        mbadaddr <= wdata;
+        mbadaddr <= wdata_internal;
    end    
    
    always @(*) begin
@@ -215,39 +253,39 @@ module vscale_csr_file(
       end else begin
          cycle_full <= cycle_full + 1;
          time_full <= time_full + 1;
-         if (retire_wb)
+         if (retire)
            instret_full <= instret_full + 1;
          mtime_full <= mtime_full + 1;
       end // else: !if(reset)
       if (wen_internal) begin
          case (addr)
-           `CSR_ADDR_CYCLE     : cycle_full[31:0] <= wdata;
-           `CSR_ADDR_TIME      : time_full[31:0] <= wdata;
-           `CSR_ADDR_INSTRET   : instret_full[31:0] <= wdata;
-           `CSR_ADDR_CYCLEH    : cycle_full[63:32] <= wdata;
-           `CSR_ADDR_TIMEH     : time_full[63:32] <= wdata;
-           `CSR_ADDR_INSTRETH  : instret_full[63:32] <= wdata;
+           `CSR_ADDR_CYCLE     : cycle_full[31:0] <= wdata_internal;
+           `CSR_ADDR_TIME      : time_full[31:0] <= wdata_internal;
+           `CSR_ADDR_INSTRET   : instret_full[31:0] <= wdata_internal;
+           `CSR_ADDR_CYCLEH    : cycle_full[63:32] <= wdata_internal;
+           `CSR_ADDR_TIMEH     : time_full[63:32] <= wdata_internal;
+           `CSR_ADDR_INSTRETH  : instret_full[63:32] <= wdata_internal;
            // mcpuid is read-only
            // mimpid is read-only
            // mhartid is read-only
            // mstatus handled separately
-           `CSR_ADDR_MTVEC     : mtvec <= wdata && {{30{1'b1}},2'b0};
+           `CSR_ADDR_MTVEC     : mtvec <= wdata_internal && {{30{1'b1}},2'b0};
            // mtdeleg constant
            // mie handled separately
-           `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata;
-           `CSR_ADDR_MTIME     : mtime_full[31:0] <= wdata;
-           `CSR_ADDR_MTIMEH    : mtime_full[63:32] <= wdata;
-           `CSR_ADDR_MSCRATCH  : mscratch <= wdata;
+           `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata_internal;
+           `CSR_ADDR_MTIME     : mtime_full[31:0] <= wdata_internal;
+           `CSR_ADDR_MTIMEH    : mtime_full[63:32] <= wdata_internal;
+           `CSR_ADDR_MSCRATCH  : mscratch <= wdata_internal;
            // mepc handled separately
            // mcause handled separately
            // mbadaddr handled separately
            // mip handled separately
-           `CSR_ADDR_CYCLEW    : cycle_full[31:0] <= wdata;
-           `CSR_ADDR_TIMEW     : time_full[31:0] <= wdata;
-           `CSR_ADDR_INSTRETW  : instret_full[31:0] <= wdata;
-           `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata;
-           `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata;
-           `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata;
+           `CSR_ADDR_CYCLEW    : cycle_full[31:0] <= wdata_internal;
+           `CSR_ADDR_TIMEW     : time_full[31:0] <= wdata_internal;
+           `CSR_ADDR_INSTRETW  : instret_full[31:0] <= wdata_internal;
+           `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata_internal;
+           `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata_internal;
+           `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
          endcase // case (addr)
       end // if (wen_internal)
    end // always @ (posedge clk)
