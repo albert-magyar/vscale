@@ -11,6 +11,10 @@ module vscale_top_tb();
    always #0.5 clk = !clk;
 
    initial begin
+      
+      $vcdplusfile ("vscale.vpd");
+      $vcdpluson();
+
       @(posedge clk);
       @(posedge clk);
 
