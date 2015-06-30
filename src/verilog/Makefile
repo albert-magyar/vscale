@@ -1,10 +1,8 @@
 VCS = vcs -full64
 
-VCS_OPTS = -notice -line +lint=all,noVCDE,noONGS,noUI -error=PCWM-L -timescale=1ns/10ps -quiet \
-	+rad +v2k +vcs+lic+wait \
+VCS_OPTS = -PP -notice -line +lint=all,NoVCDE +v2k -timescale=1ns/10ps -quiet \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
 	-CC "-std=c++11" \
-	-e vcs_main \
 
 SRCS = \
 vscale_top_tb.v \
@@ -31,3 +29,8 @@ vscale_csr_addr_map.vh
 
 simv: $(SRCS) $(HDRS)
 	$(VCS) $(VCS_OPTS) $(SRCS)
+
+clean:
+	rm -f simv
+
+.PHONY: clean
