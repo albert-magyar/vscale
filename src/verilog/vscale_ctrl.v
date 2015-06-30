@@ -1,6 +1,7 @@
 `include "vscale_ctrl_constants.vh"
 `include "vscale_alu_ops.vh"
 `include "rv32_opcodes.vh"
+`include "vscale_csr_addr_map.vh"
 
 module vscale_ctrl(
                    input 			      clk,
@@ -31,7 +32,7 @@ module vscale_ctrl(
                    output wire 			      stall_WB,
                    output wire 			      kill_WB,
                    output wire 			      exception_WB,
-		   output wire 			      exception_code_WB,
+		   output wire [`ECODE_WIDTH-1:0]     exception_code_WB,
 		   output wire 			      retire_WB,
 		   output wire [`CSR_CMD_WIDTH-1:0]   csr_cmd,
 		   output wire 			      csr_imm_sel
@@ -50,13 +51,18 @@ module vscale_ctrl(
    wire [6:0]                                         opcode = inst_DX[6:0];
    wire [6:0]                                         funct7 = inst_DX[31:25];
    wire [2:0]                                         funct3 = inst_DX[14:12];
+   wire [`REG_ADDR_WIDTH-1:0] 			      rs1_addr = inst_DX[19:15];
+   wire [`REG_ADDR_WIDTH-1:0] 			      rs2_addr = inst_DX[24:20];
+   wire [`REG_ADDR_WIDTH-1:0]                         reg_to_wr_DX = inst_DX[11:7];
    wire [`ALU_OP_WIDTH-1:0]                           add_or_sub;
    wire [`ALU_OP_WIDTH-1:0]                           srl_or_sra;
    reg [`ALU_OP_WIDTH-1:0]                            alu_op_arith;
    reg [`ALU_OP_WIDTH-1:0]                            alu_op_branch;
+   wire 					      branch_taken;
+   wire 					      jal;
+   wire 					      jalr;
    wire                                               redirect;
    reg                                                wr_reg_DX;
-   wire [`REG_ADDR_WIDTH-1:0]                         reg_to_wr_DX = inst_DX[11:7];
    wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
    wire                                               ex_DX;
    
@@ -66,9 +72,13 @@ module vscale_ctrl(
 
    // WB stage ctrl signals
    wire                              ex_WB;
-   wire exception;
+   wire 			     exception;
    assign exception = ex_WB;
-   
+
+   // Hazard signals
+   wire 			     load_use;
+   wire 			     raw_rs1;
+   wire 			     raw_rs2;
    
    // IF stage ctrl
    
@@ -233,10 +243,10 @@ module vscale_ctrl(
    
    // Hazard logic
    
-   wire raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_DX) && (src_a_sel == `SRC_A_RS1);
+   assign raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_DX) && (src_a_sel == `SRC_A_RS1);
    assign bypass_rs1 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
    
-   wire raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_DX) && (src_b_sel == `SRC_B_RS2);
+   assign raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_DX) && (src_b_sel == `SRC_B_RS2);
    assign bypass_rs2 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
    
    assign load_use = (wb_src_sel_WB == `WB_SRC_MEM) && (raw_rs1 || raw_rs2);

@@ -37,5 +37,11 @@
 
 `define HTIF_PCR_WIDTH 64
 
-`define EXCEPTION_CODE_WIDTH       4
+`define ECODE_WIDTH       4
 `define ECODE_INST_ADDR_MISALIGNED 0
+
+`define PRV_WIDTH     2
+`define PRV_U         0
+`define PRV_S         1
+`define PRV_H         2
+`define PRV_M         3

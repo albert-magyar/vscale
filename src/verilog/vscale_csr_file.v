@@ -5,14 +5,14 @@
 module vscale_csr_file(
                        input 			    clk,
 		       input 			    reset,
-		       input [`CSR_ADDR_WIDTH-1:0] 	    addr,
+		       input [`CSR_ADDR_WIDTH-1:0]  addr,
 		       input [`CSR_CMD_WIDTH-1:0]   cmd,
 		       input [`XPR_LEN-1:0] 	    wdata,
-		       output reg [`XPR_LEN-1:0] 	    rdata,
+		       output reg [`XPR_LEN-1:0]    rdata,
 		       input 			    retire,
 		       input 			    exception,
-		       input [`EXCEPTION_CODE_WIDTH-1:0] exception_code,
-		       input [`XPR_LEN-1:0] exception_load_addr,
+		       input [`ECODE_WIDTH-1:0]     exception_code,
+		       input [`XPR_LEN-1:0] 	    exception_load_addr,
 		       input [`XPR_LEN-1:0] 	    exception_PC,
 		       output [`XPR_LEN-1:0] 	    handler_PC,
 
@@ -48,12 +48,12 @@ module vscale_csr_file(
    reg [63:0] 					    mtime_full;
    reg [`XPR_LEN-1:0] 				    mscratch;
    reg [`XPR_LEN-1:0] 				    mepc;
-   reg [`EXCEPTION_CODE_WIDTH-1:0] 					    mecode;
+   reg [`ECODE_WIDTH-1:0] 		    mecode;
    reg 						    mint;
    reg [`XPR_LEN-1:0] 				    mbadaddr;
    
-   wire prv;
-   wire ie;
+   wire [`PRV_WIDTH-1:0] 			    prv;
+   wire 					    ie;
    
    wire [`XPR_LEN-1:0] 				    mcpuid;
    wire [`XPR_LEN-1:0] 				    mimpid;
@@ -64,14 +64,17 @@ module vscale_csr_file(
    wire [`XPR_LEN-1:0] mip;
    wire [`XPR_LEN-1:0] 				    mcause;
    
-   wire timer_expired;
+   wire 					    timer_expired;
    
-   reg wen_internal;
-   reg defined;
-   reg [`XPR_LEN-1:0] wdata_internal;
-   reg trap;
-   reg interrupt_taken;
-   reg [`EXCEPTION_CODE_WIDTH-1:0] interrupt_code;
+   reg 						    wen_internal;
+   reg 						    defined;
+   reg [`XPR_LEN-1:0] 				    wdata_internal;
+   reg 						    trap;
+   reg 						    interrupt_taken;
+   reg [`ECODE_WIDTH-1:0] 		    interrupt_code;
+   
+   wire 					    code_imem;
+   
    
    assign handler_PC = mtvec + (prv << 5);
    

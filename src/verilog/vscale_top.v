@@ -55,15 +55,15 @@ module vscale_top(
 			       .dmem_hwdata(dmem_hwdata),
 			       .dmem_hrdata(dmem_hrdata),
 			       .dmem_hready(dmem_hready),
-			       .dmem_hresp(dmem_hresp)
+			       .dmem_hresp(dmem_hresp),
 			       .htif_reset(reset),
-			       .htif_pcr_req_valid(0),
+			       .htif_pcr_req_valid(1'b0),
 			       .htif_pcr_req_ready(),
-			       .htif_pcr_req_rw(0),
-			       .htif_pcr_req_addr(0),
-			       .htif_pcr_req_data(0),
+			       .htif_pcr_req_rw(1'b0),
+			       .htif_pcr_req_addr(12'b0),
+			       .htif_pcr_req_data(64'b0),
 			       .htif_pcr_resp_valid(),
-			       .htif_pcr_resp_ready(1),
+			       .htif_pcr_resp_ready(1'b1),
 			       .htif_pcr_resp_data()
 			       );
    

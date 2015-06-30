@@ -34,6 +34,7 @@ module vscale_core(
    
    
    reg [`XPR_LEN-1:0]            PC_IF;
+   
    wire                          kill_IF;
    wire                          stall_IF;
    
@@ -41,6 +42,7 @@ module vscale_core(
    reg [`XPR_LEN-1:0]            PC_DX;
    reg [`INST_WIDTH-1:0]         inst_DX;
    
+   wire 			 kill_DX;
    wire                          stall_DX;
    wire [`IMM_TYPE_WIDTH-1:0]    imm_type;
    wire [`XPR_LEN-1:0]           imm;
@@ -52,7 +54,9 @@ module vscale_core(
    wire [`XPR_LEN-1:0]           rs2_data; 
    wire [`ALU_OP_WIDTH-1:0]      alu_op;
    wire [`XPR_LEN-1:0]           alu_src_a;
+   wire [`XPR_LEN-1:0] 		 src_a_bypassed;
    wire [`XPR_LEN-1:0]           alu_src_b;
+   wire [`XPR_LEN-1:0] 		 src_b_bypassed;
    wire [`XPR_LEN-1:0]           alu_out; 
    wire                          cmp_true;
    wire                          bypass_rs1;
@@ -62,13 +66,14 @@ module vscale_core(
    reg [`XPR_LEN-1:0]            PC_WB;
    reg [`XPR_LEN-1:0]            alu_out_WB;
    reg [`XPR_LEN-1:0]            store_data_WB;
-   
+
+   wire 			 kill_WB;
    wire                          stall_WB;
    reg [`XPR_LEN-1:0]            wb_data_WB;
    wire [`REG_ADDR_WIDTH-1:0]    reg_to_wr_WB;
    wire                          wr_reg_WB;
    wire [`WB_SRC_SEL_WIDTH-1:0]  wb_src_sel_WB;   
-
+   
 
    // CSR management
    wire [`CSR_ADDR_WIDTH-1:0] 	 csr_addr;
@@ -78,6 +83,7 @@ module vscale_core(
    wire [`XPR_LEN-1:0] 		 csr_rdata;
    wire 			 retire_WB;
    wire 			 exception_WB;
+   wire [`ECODE_WIDTH-1:0] 	 exception_code_WB;
    wire [`XPR_LEN-1:0]           handler_PC;
    
    vscale_ctrl ctrl(
@@ -108,7 +114,7 @@ module vscale_core(
                     .kill_DX(kill_DX),
                     .stall_WB(stall_WB),
                     .kill_WB(kill_WB),
-                    .exception_WB(exception_WB)
+                    .exception_WB(exception_WB),
 		    .exception_code_WB(exception_code_WB),
 		    .retire_WB(retire_WB),
 		    .csr_cmd(csr_cmd),
@@ -184,8 +190,8 @@ module vscale_core(
                               .alu_src_b(alu_src_b)
                               );
    
-   assign src_a_bypassed = bypass_rs1 ? alu_out_WB : rs1_data;
-   assign src_b_bypassed = bypass_rs2 ? alu_out_WB : rs2_data;
+   assign src_a_bypassed = bypass_rs1 ? alu_out_WB : alu_src_a;
+   assign src_b_bypassed = bypass_rs2 ? alu_out_WB : alu_src_b;
 
    vscale_alu alu(
                   .op(alu_op),

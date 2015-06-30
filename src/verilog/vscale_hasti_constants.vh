@@ -3,6 +3,8 @@
 `define HASTI_TRANS_NONSEQ 2'b10
 `define HASTI_TRANS_SEQ 2'b11
 
+`define HASTI_NO_PROT 4'b0
+
 `define HASTI_BURST_SINGLE 3'b0
 
 `define HASTI_MASTER_NO_LOCK 1'b0
