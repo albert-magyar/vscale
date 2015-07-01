@@ -79,6 +79,7 @@ module vscale_core(
    wire [`CSR_ADDR_WIDTH-1:0] 	 csr_addr;
    wire [`CSR_CMD_WIDTH-1:0] 	 csr_cmd;
    wire 			 csr_imm_sel;
+   wire 			 illegal_csr_access;
    wire [`XPR_LEN-1:0] 		 csr_wdata;
    wire [`XPR_LEN-1:0] 		 csr_rdata;
    wire 			 retire_WB;
@@ -118,7 +119,8 @@ module vscale_core(
 		    .exception_code_WB(exception_code_WB),
 		    .retire_WB(retire_WB),
 		    .csr_cmd(csr_cmd),
-		    .csr_imm_sel(csr_imm_sel)
+		    .csr_imm_sel(csr_imm_sel),
+		    .illegal_csr_access(illegal_csr_access)
                     );
    
    
@@ -236,6 +238,7 @@ module vscale_core(
 		       .addr(csr_addr),
 		       .cmd(csr_cmd),
 		       .wdata(csr_wdata),
+		       .illegal_access(illegal_csr_access),
 		       .rdata(csr_rdata),
 		       .retire(retire_WB),
 		       .exception(exception_WB),

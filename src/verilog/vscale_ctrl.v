@@ -22,6 +22,9 @@
 		    output wire 		       dmem_en,
 		    output wire 		       dmem_wen,
 		    output wire [2:0] 		       dmem_size,
+		    output reg [`CSR_CMD_WIDTH-1:0]    csr_cmd,
+		    output reg 			       csr_imm_sel,
+		    input 			       illegal_csr_access,
 		    output wire 		       wr_reg_WB,
 		    output reg [`REG_ADDR_WIDTH-1:0]   reg_to_wr_WB,
 		    output reg [`WB_SRC_SEL_WIDTH-1:0] wb_src_sel_WB,
@@ -33,9 +36,7 @@
 		    output wire 		       kill_WB,
 		    output wire 		       exception_WB,
 		    output wire [`ECODE_WIDTH-1:0]     exception_code_WB,
-		    output wire 		       retire_WB,
-		    output reg [`CSR_CMD_WIDTH-1:0]    csr_cmd,
-		    output reg 			       csr_imm_sel
+		    output wire 		       retire_WB
                    );
 
    // IF stage ctrl pipeline registers
@@ -43,14 +44,15 @@
    
    // IF stage ctrl signals
    wire                                               ex_IF;
-   
+    
    // DX stage ctrl pipeline registers
    reg                                                had_ex_DX;
-   
+    
    // DX stage ctrl signals
    wire [6:0]                                         opcode = inst_DX[6:0];
    wire [6:0]                                         funct7 = inst_DX[31:25];
    wire [2:0]                                         funct3 = inst_DX[14:12];
+   reg 						      illegal_opcode;
    wire [`REG_ADDR_WIDTH-1:0] 			      rs1_addr = inst_DX[19:15];
    wire [`REG_ADDR_WIDTH-1:0] 			      rs2_addr = inst_DX[24:20];
    wire [`REG_ADDR_WIDTH-1:0]                         reg_to_wr_DX = inst_DX[11:7];
@@ -65,13 +67,18 @@
    reg                                                wr_reg_DX;
    wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
    wire                                               ex_DX;
+   reg 						      ex_code_DX;
    
    // WB stage ctrl pipeline registers
    reg                               wr_reg_unkilled_WB;
    reg                               had_ex_WB;
+   reg 				     prev_ex_code_WB;
+   
 
    // WB stage ctrl signals
    wire                              ex_WB;
+   reg 				     ex_code_WB;
+   wire 			     dmem_access_exception;
    wire 			     exception;
    assign exception = ex_WB;
 
@@ -108,6 +115,16 @@
    assign stall_DX = stall_WB || load_use;
    assign ex_DX = had_ex_DX || ((0) && !stall_DX); // TODO: add causes
 
+   always @(*) begin
+      // no other cause possible before DX
+      ex_code_DX = `ECODE_INST_ADDR_MISALIGNED;
+      if (!had_ex_DX) begin
+	 if (illegal_opcode || illegal_csr_access) begin
+	    ex_code_DX = `ECODE_ILLEGAL_INST;
+	 end
+      end
+   end
+   
    assign branch_taken = ((opcode == `RV32_BRANCH) && cmp_true);
    assign jal = (opcode == `RV32_JAL);
    assign jalr = (opcode == `RV32_JALR);
@@ -233,6 +250,34 @@
       end
    end // always @ begin
 
+   always @(*) begin
+      case (opcode)
+	`RV32_LOAD     : illegal_opcode = 1'b0;
+	`RV32_STORE    : illegal_opcode = 1'b0;
+	`RV32_MADD     : illegal_opcode = 1'b0;
+	`RV32_BRANCH   : illegal_opcode = 1'b0;
+	`RV32_LOAD_FP  : illegal_opcode = 1'b0;
+	`RV32_STORE_FP : illegal_opcode = 1'b0; 
+	`RV32_MSUB     : illegal_opcode = 1'b0;
+	`RV32_JALR     : illegal_opcode = 1'b0;
+	`RV32_CUSTOM_0 : illegal_opcode = 1'b0;
+	`RV32_CUSTOM_1 : illegal_opcode = 1'b0;
+	`RV32_NMSUB    : illegal_opcode = 1'b0;
+	`RV32_MISC_MEM : illegal_opcode = 1'b0;
+	`RV32_AMO      : illegal_opcode = 1'b0;
+	`RV32_NMADD    : illegal_opcode = 1'b0;
+	`RV32_JAL      : illegal_opcode = 1'b0;
+	`RV32_OP_IMM   : illegal_opcode = 1'b0;
+	`RV32_OP       : illegal_opcode = 1'b0;
+	`RV32_OP_FP    : illegal_opcode = 1'b0;
+	`RV32_SYSTEM   : illegal_opcode = 1'b0;
+	`RV32_AUIPC    : illegal_opcode = 1'b0;
+	`RV32_LUI      : illegal_opcode = 1'b0;
+	default : illegal_opcode = 1'b1;
+	endcase // case (opcode)
+   end // always @ begin
+   
+
    // WB stage ctrl
    
    always @(posedge clk) begin
@@ -243,14 +288,27 @@
          wr_reg_unkilled_WB <= wr_reg_DX;
          wb_src_sel_WB <= wb_src_sel_DX;
          had_ex_WB <= ex_DX;
+	 prev_ex_code_WB <= ex_code_DX;
          reg_to_wr_WB <= reg_to_wr_DX;
       end
    end
    
    assign kill_WB = stall_WB || ex_WB;
    assign stall_WB = dmem_wait;
-   assign ex_WB = had_ex_WB || (dmem_badmem_e && !stall_WB);
+   assign dmem_access_exception = dmem_badmem_e && !stall_WB; 
+   assign ex_WB = had_ex_WB || dmem_access_exception;
+
+   always @(*) begin
+      ex_code_WB = prev_ex_code_WB;
+      if (!had_ex_WB) begin
+	 if (dmem_access_exception) begin
+	    ex_code_WB = `ECODE_LOAD_ADDR_MISALIGNED;
+	 end
+      end
+   end
+   
    assign exception_WB = ex_WB;
+   assign exception_code_WB = ex_code_WB;
    assign wr_reg_WB = wr_reg_unkilled_WB && !kill_WB;
    assign retire_WB = !kill_WB;
    

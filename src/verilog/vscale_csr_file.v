@@ -8,6 +8,7 @@ module vscale_csr_file(
 		       input [`CSR_ADDR_WIDTH-1:0]  addr,
 		       input [`CSR_CMD_WIDTH-1:0]   cmd,
 		       input [`XPR_LEN-1:0] 	    wdata,
+		       output 			    illegal_access,
 		       output reg [`XPR_LEN-1:0]    rdata,
 		       input 			    retire,
 		       input 			    exception,
@@ -15,7 +16,6 @@ module vscale_csr_file(
 		       input [`XPR_LEN-1:0] 	    exception_load_addr,
 		       input [`XPR_LEN-1:0] 	    exception_PC,
 		       output [`XPR_LEN-1:0] 	    handler_PC,
-
 		       input 			    htif_reset,
 		       input 			    htif_pcr_req_valid,
 		       output 			    htif_pcr_req_ready,
@@ -30,6 +30,7 @@ module vscale_csr_file(
    localparam HTIF_STATE_IDLE = 0;
    localparam HTIF_STATE_WAIT = 1;
    
+   reg [`HTIF_PCR_WIDTH-1:0] 			    htif_rdata;
    reg [`HTIF_PCR_WIDTH-1:0] 			    htif_resp_data;
    reg 						    htif_state;
    reg 						    htif_resp_data_en;
@@ -48,7 +49,7 @@ module vscale_csr_file(
    reg [63:0] 					    mtime_full;
    reg [`XPR_LEN-1:0] 				    mscratch;
    reg [`XPR_LEN-1:0] 				    mepc;
-   reg [`ECODE_WIDTH-1:0] 		    mecode;
+   reg [`ECODE_WIDTH-1:0] 			    mecode;
    reg 						    mint;
    reg [`XPR_LEN-1:0] 				    mbadaddr;
    
@@ -63,15 +64,23 @@ module vscale_csr_file(
    wire [`XPR_LEN-1:0] 				    mie;
    wire [`XPR_LEN-1:0] mip;
    wire [`XPR_LEN-1:0] 				    mcause;
+
+   reg [`XPR_LEN-1:0] 				    to_host;
+   reg [`XPR_LEN-1:0] 				    from_host;
    
-   wire 					    timer_expired;
-   
-   reg 						    wen_internal;
+   wire 					    mtimer_expired;
+
+   wire 					    host_wen;
+   wire 					    system_en;
+   wire 					    system_wen;
+   wire 					    wen_internal;
+   wire 					    illegal_region;
    reg 						    defined;
    reg [`XPR_LEN-1:0] 				    wdata_internal;
-   reg 						    trap;
+   wire 					    uinterrupt;
+   wire 					    minterrupt;
    reg 						    interrupt_taken;
-   reg [`ECODE_WIDTH-1:0] 		    interrupt_code;
+   reg [`ECODE_WIDTH-1:0] 			    interrupt_code;
    
    wire 					    code_imem;
    
@@ -80,20 +89,40 @@ module vscale_csr_file(
    
    assign prv = priv_stack[2:1];
    assign ie = priv_stack[0];
+
+   assign host_wen = (htif_state == HTIF_STATE_IDLE) && htif_pcr_req_valid && htif_pcr_req_rw;
+   assign system_en = cmd[2];
+   assign system_wen = cmd[1] || cmd[0];
+   assign wen_internal = host_wen || system_wen;
+
+   assign illegal_region = (system_wen && (addr[11:10] == 2'b11))
+     || (system_en && addr[9:8] > prv);
+
+   assign illegal_access = illegal_region || (system_en && !defined);
    
-   // TODO: setup internal wen, internal wdata
    always @(*) begin
-      wen_internal = 0;
-      wdata_internal = wdata;
-   end
-   
-   // TODO: setup trap,timer,  iterrupt taken lines
-   always @(*) begin
-      trap = 0;
-      interrupt_taken = 0;
-      interrupt_code = 0;
+      if (system_wen) begin
+	 wdata_internal = htif_pcr_req_data;
+      end else if (host_wen) begin
+	 case (cmd)
+	   `CSR_SET : wdata_internal = rdata | wdata;
+	   `CSR_CLEAR : wdata_internal = rdata && ~wdata;
+	   default : wdata_internal = wdata;
+	 endcase // case (cmd)
       end
-      
+   end // always @ begin
+
+   assign uinterrupt = 1'b0;
+   assign minterrupt = (mtie && mtimer_expired);
+   
+   always @(*) begin
+      interrupt_code = `ICODE_TIMER;
+      case (prv)
+	`PRV_U : interrupt_taken = (ie && uinterrupt) || minterrupt;
+	`PRV_M : interrupt_taken = (ie && minterrupt);
+	default : interrupt_taken = 1'b1;
+      endcase // case (prv)
+   end      
    
    always @(posedge clk) begin
       if (htif_reset)
@@ -101,7 +130,7 @@ module vscale_csr_file(
       else
 	htif_state <= next_htif_state;
       if (htif_resp_data_en)
-	htif_resp_data <= rdata;
+	htif_resp_data <= htif_rdata;
    end
 
    always @(*) begin
@@ -135,8 +164,8 @@ module vscale_csr_file(
          priv_stack <= 6'b000110;
       end else if (wen_internal && addr == `CSR_ADDR_MSTATUS) begin
          priv_stack <= wdata_internal[5:0];
-      end else if (trap) begin
-         // no delegation to U means all traps go to M
+      end else if (exception) begin
+         // no delegation to U means all exceptions go to M
          priv_stack <= {priv_stack[2:0],2'b11,1'b0};
       end
    end
@@ -146,14 +175,14 @@ module vscale_csr_file(
 
    assign mtdeleg = 0;
 
-    assign timer_expired = (mtimecmp == mtime_full[31:0]);
+   assign mtimer_expired = (mtimecmp == mtime_full[31:0]);
 
    always @(posedge clk) begin
       if (reset) begin
          mtip <= 0;
          msip <= 0;
       end else begin 
-         if (timer_expired)
+         if (mtimer_expired)
            mtip <= 1;
          if (wen_internal && addr == `CSR_ADDR_MTIMECMP)
            mtip <= 0;
@@ -211,7 +240,15 @@ module vscale_csr_file(
         mbadaddr <= (code_imem) ? exception_PC : exception_load_addr;
       if (wen_internal && addr == `CSR_ADDR_MBADADDR)
         mbadaddr <= wdata_internal;
-   end    
+   end
+
+   always @(*) begin
+      case (htif_pcr_req_addr)
+	`CSR_ADDR_TO_HOST : htif_rdata = to_host;
+	`CSR_ADDR_FROM_HOST : htif_rdata = from_host;
+	default : htif_rdata = 0;
+      endcase // case (htif_pcr_req_addr)
+   end // always @ begin
    
    always @(*) begin
       case (addr)
@@ -242,6 +279,9 @@ module vscale_csr_file(
         `CSR_ADDR_CYCLEHW   : begin rdata = cycle_full[63:32]; defined = 1'b1; end
         `CSR_ADDR_TIMEHW    : begin rdata = time_full[63:32]; defined = 1'b1; end
         `CSR_ADDR_INSTRETHW : begin rdata = instret_full[63:32]; defined = 1'b1; end
+	// non-standard
+	`CSR_ADDR_TO_HOST : begin rdata = to_host; defined = 1'b1; end
+	`CSR_ADDR_FROM_HOST : begin rdata = from_host; defined = 1'b1; end
         default : begin rdata = 0; defined = 1'b0; end
       endcase // case (addr)
    end // always @ (*)
@@ -289,6 +329,8 @@ module vscale_csr_file(
            `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata_internal;
            `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata_internal;
            `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
+	   `CSR_ADDR_TO_HOST   : to_host <= wdata_internal;
+	   `CSR_ADDR_FROM_HOST : from_host <= wdata_internal;
          endcase // case (addr)
       end // if (wen_internal)
    end // always @ (posedge clk)
