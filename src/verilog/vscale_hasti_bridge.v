@@ -1,8 +1,6 @@
 `include "vscale_hasti_constants.vh"
 
 module vscale_hasti_bridge(
-                           input         hclk,
-                           input         hresetn,
                            output [31:0] haddr,
                            output        hwrite,
                            output [2:0]  hsize,

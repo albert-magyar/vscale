@@ -1,41 +1,41 @@
-`include "vscale_ctrl_constants.vh"
-`include "vscale_alu_ops.vh"
-`include "rv32_opcodes.vh"
-`include "vscale_csr_addr_map.vh"
+ `include "vscale_ctrl_constants.vh"
+ `include "vscale_alu_ops.vh"
+ `include "rv32_opcodes.vh"
+ `include "vscale_csr_addr_map.vh"
 
-module vscale_ctrl(
-                   input 			      clk,
-                   input 			      reset,
-                   input [`INST_WIDTH-1:0] 	      inst_DX,
-                   input 			      imem_wait,
-                   input 			      imem_badmem_e,
-                   input 			      dmem_wait,
-                   input 			      dmem_badmem_e,
-                   input 			      cmp_true,
-                   output reg [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
-                   output reg [`IMM_TYPE_WIDTH-1:0]   imm_type,
-                   output 			      bypass_rs1,
-                   output 			      bypass_rs2,
-                   output reg [`SRC_A_SEL_WIDTH-1:0]  src_a_sel,
-                   output reg [`SRC_B_SEL_WIDTH-1:0]  src_b_sel,
-                   output reg [`ALU_OP_WIDTH-1:0]     alu_op,
-                   output wire 			      dmem_en,
-                   output wire 			      dmem_wen,
-                   output wire [2:0] 		      dmem_size,
-                   output wire 			      wr_reg_WB,
-                   output reg [`REG_ADDR_WIDTH-1:0]   reg_to_wr_WB,
-                   output reg [`WB_SRC_SEL_WIDTH-1:0] wb_src_sel_WB,
-                   output wire 			      stall_IF,
-                   output wire 			      kill_IF,
-                   output wire 			      stall_DX,
-                   output wire 			      kill_DX,
-                   output wire 			      stall_WB,
-                   output wire 			      kill_WB,
-                   output wire 			      exception_WB,
-		   output wire [`ECODE_WIDTH-1:0]     exception_code_WB,
-		   output wire 			      retire_WB,
-		   output wire [`CSR_CMD_WIDTH-1:0]   csr_cmd,
-		   output wire 			      csr_imm_sel
+ module vscale_ctrl(
+		    input 			       clk,
+		    input 			       reset,
+		    input [`INST_WIDTH-1:0] 	       inst_DX,
+		    input 			       imem_wait,
+		    input 			       imem_badmem_e,
+		    input 			       dmem_wait,
+		    input 			       dmem_badmem_e,
+		    input 			       cmp_true,
+		    output reg [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
+		    output reg [`IMM_TYPE_WIDTH-1:0]   imm_type,
+		    output 			       bypass_rs1,
+		    output 			       bypass_rs2,
+		    output reg [`SRC_A_SEL_WIDTH-1:0]  src_a_sel,
+		    output reg [`SRC_B_SEL_WIDTH-1:0]  src_b_sel,
+		    output reg [`ALU_OP_WIDTH-1:0]     alu_op,
+		    output wire 		       dmem_en,
+		    output wire 		       dmem_wen,
+		    output wire [2:0] 		       dmem_size,
+		    output wire 		       wr_reg_WB,
+		    output reg [`REG_ADDR_WIDTH-1:0]   reg_to_wr_WB,
+		    output reg [`WB_SRC_SEL_WIDTH-1:0] wb_src_sel_WB,
+		    output wire 		       stall_IF,
+		    output wire 		       kill_IF,
+		    output wire 		       stall_DX,
+		    output wire 		       kill_DX,
+		    output wire 		       stall_WB,
+		    output wire 		       kill_WB,
+		    output wire 		       exception_WB,
+		    output wire [`ECODE_WIDTH-1:0]     exception_code_WB,
+		    output wire 		       retire_WB,
+		    output reg [`CSR_CMD_WIDTH-1:0]    csr_cmd,
+		    output reg 			       csr_imm_sel
                    );
 
    // IF stage ctrl pipeline registers
@@ -219,7 +219,20 @@ module vscale_ctrl(
    assign dmem_en = ((opcode == `RV32_LOAD) || (opcode == `RV32_STORE)) && !kill_DX;
    assign dmem_wen = (opcode == `RV32_STORE) && !kill_DX;
    assign dmem_size = funct3;
-   
+
+
+   // csr access decoding requires some well-chosen encodings
+   // lower 2 bits of funct3 map directly to lower 2 bits of cmd on modify
+   // top bit of cmd indicates access
+   // top bit of funct3 indicates imm
+   always @(*) begin
+      csr_cmd = `CSR_IDLE;
+      csr_imm_sel = funct3[2];
+      if (opcode == `RV32_SYSTEM && funct3[1:0] != 2'b0) begin
+	 csr_cmd = (inst_DX[19:15] == 5'b0) ? `CSR_READ : {1'b1,funct3[1:0]};
+      end
+   end // always @ begin
+
    // WB stage ctrl
    
    always @(posedge clk) begin
@@ -239,7 +252,7 @@ module vscale_ctrl(
    assign ex_WB = had_ex_WB || (dmem_badmem_e && !stall_WB);
    assign exception_WB = ex_WB;
    assign wr_reg_WB = wr_reg_unkilled_WB && !kill_WB;
-   
+   assign retire_WB = !kill_WB;
    
    // Hazard logic
    

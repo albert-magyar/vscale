@@ -53,8 +53,6 @@ module vscale_hasti_wrapper(
    wire                                   dmem_badmem_e;
    
    vscale_hasti_bridge imem_bridge(
-                                   .hclk(hclk),
-                                   .hresetn(hresetn),
                                    .haddr(imem_haddr),
                                    .hwrite(imem_hwrite),
                                    .hsize(imem_hsize),
@@ -77,8 +75,6 @@ module vscale_hasti_wrapper(
                                    );
 
    vscale_hasti_bridge dmem_bridge(
-                                   .hclk(hclk),
-                                   .hresetn(hresetn),
                                    .haddr(dmem_haddr),
                                    .hwrite(dmem_hwrite),
                                    .hsize(dmem_hsize),

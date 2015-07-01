@@ -1,6 +1,6 @@
 VCS = vcs -full64
 
-VCS_OPTS = -PP -notice -line +lint=all,NoVCDE +v2k -timescale=1ns/10ps -quiet \
+VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
 	+define+DEBUG -debug_pp \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
 	-CC "-std=c++11" \
