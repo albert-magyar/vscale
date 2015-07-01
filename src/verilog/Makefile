@@ -28,6 +28,12 @@ vscale_alu_ops.vh \
 vscale_hasti_constants.vh \
 vscale_csr_addr_map.vh
 
+vscale.vcd: vscale.vpd
+	vpd2vcd $< $@
+
+vscale.vpd: simv vscale_simple_test.bin
+	./simv
+
 simv: $(SRCS) $(HDRS)
 	$(VCS) $(VCS_OPTS) $(SRCS)
 

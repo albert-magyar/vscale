@@ -26,4 +26,13 @@ module vscale_regfile(
       end
    end
 
+`ifndef SYNTHESIS
+   integer i;
+   initial begin
+      for (i = 0; i < 32; i = i + 1) begin
+	 data[i] = 0;
+      end
+   end
+`endif
+
 endmodule // vscale_regfile

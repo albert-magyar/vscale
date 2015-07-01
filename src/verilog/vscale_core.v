@@ -147,6 +147,7 @@ module vscale_core(
    
    always @(posedge clk) begin
       if (reset) begin
+	 PC_DX <= 0;
          inst_DX <= `RV_NOP;
       end else if (~stall_DX) begin
          if (kill_IF) begin
@@ -197,8 +198,8 @@ module vscale_core(
 
    vscale_alu alu(
                   .op(alu_op),
-                  .in1(alu_src_a),
-                  .in2(alu_src_b),
+                  .in1(src_a_bypassed),
+                  .in2(src_b_bypassed),
                   .out(alu_out)
                   );
    
@@ -208,7 +209,13 @@ module vscale_core(
    assign dmem_addr = alu_out;
    
    always @(posedge clk) begin
-      if (~stall_WB) begin
+      if (reset) begin
+	 `ifndef SYNTHESIS
+	 PC_WB <= 0;
+	 store_data_WB <= 0;
+	 alu_out_WB <= 0;
+	 `endif
+      end else if (~stall_WB) begin
          PC_WB <= PC_DX;
          store_data_WB <= rs2_data;
          alu_out_WB <= alu_out;

@@ -1,26 +1,33 @@
 module vscale_top_tb();
 
-   reg clk = 0;
-   reg reset = 1;
+   reg clk;
+   reg reset;
+
 
    vscale_top DUT(
 		  .clk(clk),
 		  .reset(reset)
 		  );
 
-   always #0.5 clk = !clk;
+   initial begin
+      clk = 0;
+      reset = 1;
+   end
+   
+   always #5 clk = !clk;
 
    initial begin
+
+      $readmemb("vscale_simple_test.bin", DUT.imem.mem);
       
       $vcdplusfile ("vscale.vpd");
       $vcdpluson();
+      $vcdplusmemon();
 
-      @(posedge clk);
-      @(posedge clk);
+      #100 reset = 0;
 
-      reset = 0;
-
-      $finish;
+      #2000 $finish;
+      
    end
 
 endmodule // vscale_top_tb

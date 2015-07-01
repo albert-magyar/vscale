@@ -84,6 +84,8 @@
 
    // Hazard signals
    wire 			     load_use;
+   reg 				     uses_rs1;
+   reg 				     uses_rs2;
    wire 			     raw_rs1;
    wire 			     raw_rs2;
    
@@ -134,6 +136,8 @@
    always @(*) begin
       if (exception) begin
          PC_src_sel = `PC_HANDLER;
+      end else if (replay_IF) begin
+	 PC_src_sel = `PC_REPLAY;
       end else if (branch_taken) begin
          PC_src_sel = `PC_BRANCH_TARGET;
       end else if (jal) begin
@@ -145,6 +149,25 @@
       end
    end // always @ begin
 
+   always @(*) begin
+      case (opcode)
+	`RV32_LUI : uses_rs1 = 1'b0;
+	`RV32_AUIPC : uses_rs1 = 1'b0;
+	`RV32_JAL : uses_rs1 = 1'b0;
+	default : uses_rs1 = 1'b1;
+      endcase // case (opcode)
+   end // always @ begin
+
+   always @(*) begin
+      case (opcode)
+	`RV32_OP : uses_rs2 = 1'b1;
+	`RV32_BRANCH : uses_rs2 = 1'b1;
+	`RV32_STORE : uses_rs2 = 1'b1;
+	default : uses_rs2 = 1'b0;
+      endcase // case (opcode)
+   end // always @ begin
+
+   
    always @(*) begin
       case (opcode)
         `RV32_LUI : src_a_sel = `SRC_A_ZERO;
@@ -161,7 +184,7 @@
         `RV32_JALR : src_b_sel = `SRC_B_FOUR;
         `RV32_BRANCH : src_b_sel = `SRC_B_RS2;
         `RV32_OP : src_b_sel = `SRC_B_RS2;
-        default : src_a_sel = `SRC_B_IMM;
+        default : src_b_sel = `SRC_B_IMM;
       endcase // case (opcode)
    end // always @ begin
    
@@ -314,11 +337,13 @@
    
    // Hazard logic
    
-   assign raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_DX) && (src_a_sel == `SRC_A_RS1);
+   assign raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_WB)
+     && (rs1_addr != 0) && uses_rs1;
    assign bypass_rs1 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
    
-   assign raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_DX) && (src_b_sel == `SRC_B_RS2);
-   assign bypass_rs2 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
+   assign raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_WB)
+     && (rs2_addr != 0) && uses_rs2;
+   assign bypass_rs2 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs2;
    
    assign load_use = (wb_src_sel_WB == `WB_SRC_MEM) && (raw_rs1 || raw_rs2);
    

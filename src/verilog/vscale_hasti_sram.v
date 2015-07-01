@@ -38,7 +38,7 @@ module vscale_hasti_sram(
    assign half_sel = haddr[1];
    assign byte_sel = haddr[0];
    
-   assign hready = 1'b0;
+   assign hready = 1'b1;
    assign hresp = `HASTI_RESP_OKAY;
 
    
@@ -82,5 +82,14 @@ module vscale_hasti_sram(
    assign low_byte = byte_sel_reg ? low_half[15:8] : low_half[7:0];
    assign hrdata = {mem_rdata[31:16],low_half[15:8],low_byte};
 
+`ifndef SYNTHESIS
+   integer i;
+   initial begin
+      for (i = 0; i < nwords; i = i + 1) begin
+	 mem[i] = 0;
+      end
+   end
+`endif
+   
 endmodule // vscale_hasti_sram
 
