@@ -50,13 +50,13 @@ module vscale_core(
    wire [`SRC_B_SEL_WIDTH-1:0]   src_b_sel;
    wire [`REG_ADDR_WIDTH-1:0]    rs1_addr;
    wire [`XPR_LEN-1:0]           rs1_data;
+   wire [`XPR_LEN-1:0] 		 rs1_data_bypassed;
    wire [`REG_ADDR_WIDTH-1:0]    rs2_addr;
    wire [`XPR_LEN-1:0]           rs2_data; 
+   wire [`XPR_LEN-1:0] 		 rs2_data_bypassed;
    wire [`ALU_OP_WIDTH-1:0]      alu_op;
    wire [`XPR_LEN-1:0]           alu_src_a;
-   wire [`XPR_LEN-1:0] 		 src_a_bypassed;
    wire [`XPR_LEN-1:0]           alu_src_b;
-   wire [`XPR_LEN-1:0] 		 src_b_bypassed;
    wire [`XPR_LEN-1:0]           alu_out; 
    wire                          cmp_true;
    wire                          bypass_rs1;
@@ -128,7 +128,7 @@ module vscale_core(
                        .PC_src_sel(PC_src_sel),
                        .inst_DX(inst_DX),
                        .alu_out(alu_out),
-                       .rs1_data(rs1_data),
+                       .rs1_data(rs1_data_bypassed),
                        .PC_IF(PC_IF),
                        .PC_DX(PC_DX),
                        .handler_PC(handler_PC),
@@ -182,24 +182,24 @@ module vscale_core(
    vscale_src_a_mux src_a_mux(
                               .src_a_sel(src_a_sel),
                               .PC_DX(PC_DX),
-                              .rs1_data(rs1_data),
+                              .rs1_data(rs1_data_bypassed),
                               .alu_src_a(alu_src_a)
                               );
 
    vscale_src_b_mux src_b_mux(
                               .src_b_sel(src_b_sel),
                               .imm(imm),
-                              .rs2_data(rs2_data),
+                              .rs2_data(rs2_data_bypassed),
                               .alu_src_b(alu_src_b)
                               );
    
-   assign src_a_bypassed = bypass_rs1 ? alu_out_WB : alu_src_a;
-   assign src_b_bypassed = bypass_rs2 ? alu_out_WB : alu_src_b;
+   assign rs1_data_bypassed = bypass_rs1 ? alu_out_WB : rs1_data;
+   assign rs2_data_bypassed = bypass_rs2 ? alu_out_WB : rs2_data;
 
    vscale_alu alu(
                   .op(alu_op),
-                  .in1(src_a_bypassed),
-                  .in2(src_b_bypassed),
+                  .in1(alu_src_a),
+                  .in2(alu_src_b),
                   .out(alu_out)
                   );
    
@@ -217,7 +217,7 @@ module vscale_core(
 	 `endif
       end else if (~stall_WB) begin
          PC_WB <= PC_DX;
-         store_data_WB <= rs2_data;
+         store_data_WB <= rs2_data_bypassed;
          alu_out_WB <= alu_out;
       end
    end
@@ -237,7 +237,7 @@ module vscale_core(
    // CSR
    
    assign csr_addr = inst_DX[31:20];
-   assign csr_wdata = (csr_imm_sel) ? inst_DX[19:15] : rs1_data;
+   assign csr_wdata = (csr_imm_sel) ? inst_DX[19:15] : rs1_data_bypassed;
 
    vscale_csr_file csr(
                        .clk(clk),

@@ -24,9 +24,11 @@ module vscale_hasti_sram(
    wire [15:0] 				   low_half;
    wire [7:0] 				   low_byte;
    reg [3:0] 				   wmask;
+   reg [3:0] 				   wmask_delayed;
    reg [31:0] 				   wdata;
    
    wire [29:0] 				   word_addr;
+   reg [29:0] 				   word_addr_delayed;
    wire 				   half_sel;
    wire 				   byte_sel;
 
@@ -68,12 +70,21 @@ module vscale_hasti_sram(
 	end
       endcase // case (hsize)   
    end // always @ begin
+
+   always @(posedge hclk) begin
+      if (~hresetn) begin
+	 wmask_delayed <= 0;
+      end else begin
+	 wmask_delayed <= wmask;
+	 word_addr_delayed <= word_addr;
+      end
+   end
    
    integer i;
    always @(posedge hclk) begin
       for (i = 0; i < 4; i = i + 1) begin
-	 if (wmask[i]) begin
-	    mem[word_addr][8*i +: 8] <= wdata[8*i +: 8];
+	 if (wmask_delayed[i]) begin
+	    mem[word_addr_delayed][8*i +: 8] <= wdata[8*i +: 8];
 	 end
       end
    end
@@ -83,10 +94,10 @@ module vscale_hasti_sram(
    assign hrdata = {mem_rdata[31:16],low_half[15:8],low_byte};
 
 `ifndef SYNTHESIS
-   integer i;
+   integer reset_addr;
    initial begin
-      for (i = 0; i < nwords; i = i + 1) begin
-	 mem[i] = 0;
+      for (reset_addr = 0; reset_addr < nwords; reset_addr = reset_addr + 1) begin
+	 mem[reset_addr] = 0;
       end
    end
 `endif
