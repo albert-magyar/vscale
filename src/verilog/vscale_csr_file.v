@@ -84,8 +84,9 @@ module vscale_csr_file(
    
    wire 					    code_imem;
    
-   
-   assign handler_PC = mtvec + (prv << 5);
+
+   wire [`XPR_LEN-1:0]                              padded_prv = prv;
+   assign handler_PC = mtvec + (padded_prv << 5);
    
    assign prv = priv_stack[2:1];
    assign ie = priv_stack[0];
@@ -106,7 +107,7 @@ module vscale_csr_file(
       end else if (host_wen) begin
 	 case (cmd)
 	   `CSR_SET : wdata_internal = rdata | wdata;
-	   `CSR_CLEAR : wdata_internal = rdata && ~wdata;
+	   `CSR_CLEAR : wdata_internal = rdata & ~wdata;
 	   default : wdata_internal = wdata;
 	 endcase // case (cmd)
       end
@@ -155,7 +156,7 @@ module vscale_csr_file(
    assign htif_pcr_resp_valid = (htif_state == HTIF_STATE_WAIT);
    assign htif_pcr_resp_data = htif_resp_data;
    
-   assign mcpuid = (1 << 20) || (1 << 8); // 'I' and 'U' bits set
+   assign mcpuid = (1 << 20) | (1 << 8); // 'I' and 'U' bits set
    assign mimpid = 32'h8000;
    assign mhartid = 0;
    
@@ -208,9 +209,9 @@ module vscale_csr_file(
    
    always @(posedge clk) begin
       if (exception || interrupt_taken)
-        mepc <= exception_PC && {{30{1'b1}},2'b0};      
+        mepc <= exception_PC & {{30{1'b1}},2'b0};      
       if (wen_internal && addr == `CSR_ADDR_MEPC)
-        mepc <= wdata_internal && {{30{1'b1}},2'b0};
+        mepc <= wdata_internal & {{30{1'b1}},2'b0};
    end
 
    always @(posedge clk) begin
@@ -312,7 +313,7 @@ module vscale_csr_file(
            // mimpid is read-only
            // mhartid is read-only
            // mstatus handled separately
-           `CSR_ADDR_MTVEC     : mtvec <= wdata_internal && {{30{1'b1}},2'b0};
+           `CSR_ADDR_MTVEC     : mtvec <= wdata_internal & {{30{1'b1}},2'b0};
            // mtdeleg constant
            // mie handled separately
            `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata_internal;
@@ -331,6 +332,9 @@ module vscale_csr_file(
            `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
 	   `CSR_ADDR_TO_HOST   : to_host <= wdata_internal;
 	   `CSR_ADDR_FROM_HOST : from_host <= wdata_internal;
+           default : begin
+              // errors handled on read access
+           end
          endcase // case (addr)
       end // if (wen_internal)
    end // always @ (posedge clk)

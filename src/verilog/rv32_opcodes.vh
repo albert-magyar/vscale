@@ -4,6 +4,8 @@
 `define XPR_LEN        32
 `define SHAMT_WIDTH     5
 
+`define RV_NOP `INST_WIDTH'b0010011
+
 // Opcodes
 
 `define RV32_LOAD     7'b0000011

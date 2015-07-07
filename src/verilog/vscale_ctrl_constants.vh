@@ -1,5 +1,3 @@
-`define RV_NOP 7'b0010011
-
 `define SRC_A_SEL_WIDTH 2
 `define SRC_A_RS1  `SRC_A_SEL_WIDTH'd0
 `define SRC_A_PC   `SRC_A_SEL_WIDTH'd1
@@ -28,6 +26,6 @@
 `define WB_SRC_SEL_WIDTH 2
 `define WB_SRC_ALU  `WB_SRC_SEL_WIDTH'd0
 `define WB_SRC_MEM  `WB_SRC_SEL_WIDTH'd1
-`define WB_SRC_JUMP `WB_SRC_SEL_WIDTH'd2
+`define WB_SRC_CSR  `WB_SRC_SEL_WIDTH'd2
 
-`define HTIF_PCR_WIDTH 64
+`define HTIF_PCR_WIDTH 32

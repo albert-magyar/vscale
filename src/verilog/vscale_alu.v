@@ -20,14 +20,14 @@ module vscale_alu(
         `ALU_OP_OR : out = in1 | in2;
         `ALU_OP_AND : out = in1 & in2;
         `ALU_OP_SRL : out = in1 >> shamt;
-        `ALU_OP_SEQ : out = in1 == in2;
-        `ALU_OP_SNE : out = in1 != in2;
+        `ALU_OP_SEQ : out = {31'b0, in1 == in2};
+        `ALU_OP_SNE : out = {31'b0, in1 != in2};
         `ALU_OP_SUB : out = in1 - in2;
         `ALU_OP_SRA : out = in1 >>> shamt;
-        `ALU_OP_SLT : out = $signed(in1) < $signed(in2);
-        `ALU_OP_SGE : out = $signed(in1) >= $signed(in2);
-        `ALU_OP_SLTU : out = in1 < in2;
-        `ALU_OP_SGEU : out = in1 >= in2;
+        `ALU_OP_SLT : out = {31'b0, $signed(in1) < $signed(in2)};
+        `ALU_OP_SGE : out = {31'b0, $signed(in1) >= $signed(in2)};
+        `ALU_OP_SLTU : out = {31'b0, in1 < in2};
+        `ALU_OP_SGEU : out = {31'b0, in1 >= in2};
         default : out = 0;
       endcase // case op
    end

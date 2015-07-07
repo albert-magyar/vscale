@@ -57,17 +57,21 @@ module vscale_hasti_sram(
    always @(*) begin
       case (hsize)
 	`HASTI_SIZE_BYTE : begin
-	   wmask = hwrite << haddr[1:0];
+	   wmask = {3'b0,hwrite} << haddr[1:0];
 	   wdata = {4{hwdata[7:0]}};
 	end
 	`HASTI_SIZE_HALFWORD : begin
-	   wmask = {2{hwrite}} << {haddr[1],1'b0};
+	   wmask = {2'b0,{2{hwrite}}} << {haddr[1],1'b0};
 	   wdata = {2{hwdata[15:0]}};
 	end
 	`HASTI_SIZE_WORD : begin
 	   wmask = {4{hwrite}};
 	   wdata = hwdata;
 	end
+        default : begin
+           wmask = 4'b0;
+           wdata = hwdata;
+        end
       endcase // case (hsize)   
    end // always @ begin
 

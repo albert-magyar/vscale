@@ -38,8 +38,6 @@
 `define CSR_SET       6
 `define CSR_CLEAR     7
 
-`define HTIF_PCR_WIDTH 64
-
 `define ECODE_WIDTH                   4
 `define ECODE_INST_ADDR_MISALIGNED    0
 `define ECODE_INST_ADDR_FAULT         1

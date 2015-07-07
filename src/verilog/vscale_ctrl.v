@@ -67,17 +67,17 @@
    reg                                                wr_reg_DX;
    wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
    wire                                               ex_DX;
-   reg 						      ex_code_DX;
+   reg [`ECODE_WIDTH-1:0]                             ex_code_DX;
    
    // WB stage ctrl pipeline registers
    reg                               wr_reg_unkilled_WB;
    reg                               had_ex_WB;
-   reg 				     prev_ex_code_WB;
+   reg [`ECODE_WIDTH-1:0]            prev_ex_code_WB;
    
 
    // WB stage ctrl signals
    wire                              ex_WB;
-   reg 				     ex_code_WB;
+   reg [`ECODE_WIDTH-1:0]            ex_code_WB;
    wire 			     dmem_access_exception;
    wire 			     exception;
    assign exception = ex_WB;
@@ -213,8 +213,8 @@
       endcase // case (opcode)
    end
 
-   assign add_or_sub = ((opcode == `RV32_OP) && (inst_DX[30])) ? `ALU_OP_SUB : `ALU_OP_ADD;
-   assign srl_or_sra = (inst_DX[30]) ? `ALU_OP_SRA : `ALU_OP_SRL;
+   assign add_or_sub = ((opcode == `RV32_OP) && (funct7[4])) ? `ALU_OP_SUB : `ALU_OP_ADD;
+   assign srl_or_sra = (funct7[4]) ? `ALU_OP_SRA : `ALU_OP_SRL;
    
    always @(*) begin
       case (funct3)
@@ -255,7 +255,7 @@
    assign rs1_addr = inst_DX[19:15];
    assign rs2_addr = inst_DX[24:20];
 
-   assign wb_src_sel_DX = (opcode == `RV32_LOAD) ? `WB_SRC_MEM : (jal || jalr) ? `WB_SRC_JUMP : `WB_SRC_ALU;
+   assign wb_src_sel_DX = (opcode == `RV32_LOAD) ? `WB_SRC_MEM : (csr_cmd != `CSR_IDLE) ? `WB_SRC_CSR : `WB_SRC_ALU;
    assign dmem_en = ((opcode == `RV32_LOAD) || (opcode == `RV32_STORE)) && !kill_DX;
    assign dmem_wen = (opcode == `RV32_STORE) && !kill_DX;
    assign dmem_size = funct3;

@@ -1,3 +1,6 @@
+`include "vscale_ctrl_constants.vh"
+`include "vscale_csr_addr_map.vh"
+
 module vscale_top(
 		  input clk,
 		  input reset
@@ -29,7 +32,24 @@ module vscale_top(
    wire 		dmem_hready;
    wire 		dmem_hresp;
 
+   wire                 htif_reset;
+   wire                 htif_pcr_req_valid;
+   wire                 htif_pcr_req_ready;
+   wire                 htif_pcr_req_rw;
+   wire [`CSR_ADDR_WIDTH-1:0] htif_pcr_req_addr;
+   wire [`HTIF_PCR_WIDTH-1:0] htif_pcr_req_data;
+   wire                       htif_pcr_resp_valid;
+   wire                       htif_pcr_resp_ready;
+   wire [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data;
+
    assign resetn = ~reset;
+
+   assign htif_reset = reset;
+   assign htif_pcr_req_valid = 1'b0;
+   assign htif_pcr_req_rw = 1'b0;
+   assign htif_pcr_req_addr = `CSR_ADDR_WIDTH'b0;
+   assign htif_pcr_req_data = `HTIF_PCR_WIDTH'b0;
+   assign htif_pcr_resp_ready = 1'b0;
    
    vscale_hasti_wrapper vscale(
 			       .hclk(clk),
@@ -56,15 +76,15 @@ module vscale_top(
 			       .dmem_hrdata(dmem_hrdata),
 			       .dmem_hready(dmem_hready),
 			       .dmem_hresp(dmem_hresp),
-			       .htif_reset(reset),
-			       .htif_pcr_req_valid(1'b0),
-			       .htif_pcr_req_ready(),
-			       .htif_pcr_req_rw(1'b0),
-			       .htif_pcr_req_addr(12'b0),
-			       .htif_pcr_req_data(64'b0),
-			       .htif_pcr_resp_valid(),
-			       .htif_pcr_resp_ready(1'b1),
-			       .htif_pcr_resp_data()
+			       .htif_reset(htif_reset),
+			       .htif_pcr_req_valid(htif_pcr_req_valid),
+			       .htif_pcr_req_ready(htif_pcr_req_ready),
+			       .htif_pcr_req_rw(htif_pcr_req_rw),
+			       .htif_pcr_req_addr(htif_pcr_req_addr),
+			       .htif_pcr_req_data(htif_pcr_req_data),
+			       .htif_pcr_resp_valid(htif_pcr_resp_valid),
+			       .htif_pcr_resp_ready(htif_pcr_resp_ready),
+			       .htif_pcr_resp_data(htif_pcr_resp_data)
 			       );
    
    vscale_hasti_sram imem(

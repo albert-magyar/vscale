@@ -65,6 +65,7 @@ module vscale_core(
    
    reg [`XPR_LEN-1:0]            PC_WB;
    reg [`XPR_LEN-1:0]            alu_out_WB;
+   reg [`XPR_LEN-1:0]            csr_rdata_WB;
    reg [`XPR_LEN-1:0]            store_data_WB;
 
    wire 			 kill_WB;
@@ -219,6 +220,7 @@ module vscale_core(
          PC_WB <= PC_DX;
          store_data_WB <= rs2_data_bypassed;
          alu_out_WB <= alu_out;
+         csr_rdata_WB <= csr_rdata;
       end
    end
    
@@ -226,6 +228,7 @@ module vscale_core(
       case (wb_src_sel_WB)
         `WB_SRC_ALU : wb_data_WB = alu_out_WB;
         `WB_SRC_MEM : wb_data_WB = dmem_rdata;
+        `WB_SRC_CSR : wb_data_WB = csr_rdata_WB;
         default : wb_data_WB = alu_out_WB;
       endcase
    end
