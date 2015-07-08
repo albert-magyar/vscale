@@ -5,15 +5,18 @@ VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
 	-CC "-std=c++11" \
 
+VCS_TB = vscale_top_tb.v
+
 VERILATOR = verilator
 
 VERILATOR_OPTS = -Wall -Wno-WIDTH -Wno-UNUSED --cc
 
-VCS_TB = vscale_top_tb.v
+VERILATOR_CPP_TB = vscale_main.cpp
 
-TOP = vscale_top.v
+VERILATOR_TOP = vscale_verilator_top.v
 
 SRCS = \
+vscale_top.v \
 vscale_PC_mux.v \
 vscale_ctrl.v \
 vscale_regfile.v \
@@ -41,10 +44,11 @@ vscale.vpd: simv vscale_simple_test.bin
 	./simv
 
 simv: $(VCS_TB) $(SRCS) $(HDRS)
-	$(VCS) $(VCS_OPTS) $(VCS_TB) $(TOP) $(SRCS)
+	$(VCS) $(VCS_OPTS) $(VCS_TB) $(SRCS)
 
 compile-verilator:
-	$(VERILATOR) $(VERILATOR_OPTS) -o vscale-sim $(TOP) $(SRCS)
+	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(SRCS) --exe $(VERILATOR_CPP_TB)
+	cd obj_dir && make -f Vvscale_verilator_top.mk Vvscale_verilator_top
 
 clean:
 	rm -rf simv obj_dir

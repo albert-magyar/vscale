@@ -2,54 +2,48 @@
 `include "vscale_csr_addr_map.vh"
 
 module vscale_top(
-		  input clk,
-		  input reset
+		  input                        clk,
+		  input                        reset,
+                  input                        htif_pcr_req_valid,
+                  output                       htif_pcr_req_ready,
+                  input                        htif_pcr_req_rw,
+                  input [`CSR_ADDR_WIDTH-1:0]  htif_pcr_req_addr,
+                  input [`HTIF_PCR_WIDTH-1:0]  htif_pcr_req_data,
+                  output                       htif_pcr_resp_valid,
+                  input                        htif_pcr_resp_ready,
+                  output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
 		  );
 
-   wire 		resetn;
+   wire                                      resetn;
    
-   wire [31:0] 		imem_haddr;
-   wire 		imem_hwrite;
-   wire [2:0] 		imem_hsize;
-   wire [2:0] 		imem_hburst;
-   wire 		imem_hmastlock;
-   wire [3:0] 		imem_hprot;
-   wire [1:0] 		imem_htrans;
-   wire [31:0] 		imem_hwdata;
-   wire [31:0] 		imem_hrdata;
-   wire 		imem_hready;
-   wire 		imem_hresp;
+   wire [31:0]                               imem_haddr;
+   wire                                      imem_hwrite;
+   wire [2:0]                                imem_hsize;
+   wire [2:0]                                imem_hburst;
+   wire                                      imem_hmastlock;
+   wire [3:0]                                imem_hprot;
+   wire [1:0]                                imem_htrans;
+   wire [31:0]                               imem_hwdata;
+   wire [31:0]                               imem_hrdata;
+   wire                                      imem_hready;
+   wire                                      imem_hresp;
    
-   wire [31:0] 		dmem_haddr;
-   wire 		dmem_hwrite;
-   wire [2:0] 		dmem_hsize;
-   wire [2:0] 		dmem_hburst;
-   wire 		dmem_hmastlock;
-   wire [3:0] 		dmem_hprot;
-   wire [1:0] 		dmem_htrans;
-   wire [31:0] 		dmem_hwdata;
-   wire [31:0] 		dmem_hrdata;
-   wire 		dmem_hready;
-   wire 		dmem_hresp;
+   wire [31:0]                               dmem_haddr;
+   wire                                      dmem_hwrite;
+   wire [2:0]                                dmem_hsize;
+   wire [2:0]                                dmem_hburst;
+   wire                                      dmem_hmastlock;
+   wire [3:0]                                dmem_hprot;
+   wire [1:0]                                dmem_htrans;
+   wire [31:0]                               dmem_hwdata;
+   wire [31:0]                               dmem_hrdata;
+   wire                                      dmem_hready;
+   wire                                      dmem_hresp;
 
-   wire                 htif_reset;
-   wire                 htif_pcr_req_valid;
-   wire                 htif_pcr_req_ready;
-   wire                 htif_pcr_req_rw;
-   wire [`CSR_ADDR_WIDTH-1:0] htif_pcr_req_addr;
-   wire [`HTIF_PCR_WIDTH-1:0] htif_pcr_req_data;
-   wire                       htif_pcr_resp_valid;
-   wire                       htif_pcr_resp_ready;
-   wire [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data;
-
+   wire                                      htif_reset;
+   
    assign resetn = ~reset;
-
    assign htif_reset = reset;
-   assign htif_pcr_req_valid = 1'b0;
-   assign htif_pcr_req_rw = 1'b0;
-   assign htif_pcr_req_addr = `CSR_ADDR_WIDTH'b0;
-   assign htif_pcr_req_data = `HTIF_PCR_WIDTH'b0;
-   assign htif_pcr_resp_ready = 1'b0;
    
    vscale_hasti_wrapper vscale(
 			       .hclk(clk),
