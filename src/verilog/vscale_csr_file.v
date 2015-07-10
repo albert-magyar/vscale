@@ -33,7 +33,7 @@ module vscale_csr_file(
    reg [`HTIF_PCR_WIDTH-1:0] 			    htif_rdata;
    reg [`HTIF_PCR_WIDTH-1:0] 			    htif_resp_data;
    reg 						    htif_state;
-   reg 						    htif_resp_data_en;
+   reg 						    htif_fire;
    reg 						    next_htif_state;
    
    reg [63:0] 					    cycle_full;
@@ -102,9 +102,9 @@ module vscale_csr_file(
    assign illegal_access = illegal_region || (system_en && !defined);
    
    always @(*) begin
-      if (system_wen) begin
+      if (host_wen) begin
 	 wdata_internal = htif_pcr_req_data;
-      end else if (host_wen) begin
+      end else if (system_wen) begin
 	 case (cmd)
 	   `CSR_SET : wdata_internal = rdata | wdata;
 	   `CSR_CLEAR : wdata_internal = rdata & ~wdata;
@@ -130,17 +130,17 @@ module vscale_csr_file(
 	htif_state <= HTIF_STATE_IDLE;
       else
 	htif_state <= next_htif_state;
-      if (htif_resp_data_en)
+      if (htif_fire)
 	htif_resp_data <= htif_rdata;
    end
 
    always @(*) begin
-      htif_resp_data_en = 1'b0;
+      htif_fire = 1'b0;
       next_htif_state = htif_state;
       case (htif_state)
 	HTIF_STATE_IDLE : begin
 	   if (htif_pcr_req_valid) begin
-	      htif_resp_data_en = 1'b1;
+	      htif_fire = 1'b1;
 	      next_htif_state = HTIF_STATE_WAIT;
 	   end
 	end
@@ -294,49 +294,52 @@ module vscale_csr_file(
          time_full <= 0;
          instret_full <= 0;
          mtime_full <= 0;
+	 to_host <= 0;
+	 from_host <= 0;
       end else begin
          cycle_full <= cycle_full + 1;
          time_full <= time_full + 1;
          if (retire)
            instret_full <= instret_full + 1;
          mtime_full <= mtime_full + 1;
+	 if (wen_internal) begin
+            case (addr)
+              `CSR_ADDR_CYCLE     : cycle_full[31:0] <= wdata_internal;
+              `CSR_ADDR_TIME      : time_full[31:0] <= wdata_internal;
+              `CSR_ADDR_INSTRET   : instret_full[31:0] <= wdata_internal;
+              `CSR_ADDR_CYCLEH    : cycle_full[63:32] <= wdata_internal;
+              `CSR_ADDR_TIMEH     : time_full[63:32] <= wdata_internal;
+              `CSR_ADDR_INSTRETH  : instret_full[63:32] <= wdata_internal;
+              // mcpuid is read-only
+              // mimpid is read-only
+              // mhartid is read-only
+              // mstatus handled separately
+              `CSR_ADDR_MTVEC     : mtvec <= wdata_internal & {{30{1'b1}},2'b0};
+              // mtdeleg constant
+              // mie handled separately
+              `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata_internal;
+              `CSR_ADDR_MTIME     : mtime_full[31:0] <= wdata_internal;
+              `CSR_ADDR_MTIMEH    : mtime_full[63:32] <= wdata_internal;
+              `CSR_ADDR_MSCRATCH  : mscratch <= wdata_internal;
+              // mepc handled separately
+              // mcause handled separately
+              // mbadaddr handled separately
+              // mip handled separately
+              `CSR_ADDR_CYCLEW    : cycle_full[31:0] <= wdata_internal;
+              `CSR_ADDR_TIMEW     : time_full[31:0] <= wdata_internal;
+              `CSR_ADDR_INSTRETW  : instret_full[31:0] <= wdata_internal;
+              `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata_internal;
+              `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata_internal;
+              `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
+	      `CSR_ADDR_TO_HOST   : to_host <= wdata_internal;
+	      `CSR_ADDR_FROM_HOST : from_host <= wdata_internal;
+              default : ;
+            endcase // case (addr)
+	 end // if (wen_internal)
+	 if (htif_fire && htif_pcr_req_addr == `CSR_ADDR_TO_HOST && !system_wen) begin
+	    to_host <= 0;
+	 end
       end // else: !if(reset)
-      if (wen_internal) begin
-         case (addr)
-           `CSR_ADDR_CYCLE     : cycle_full[31:0] <= wdata_internal;
-           `CSR_ADDR_TIME      : time_full[31:0] <= wdata_internal;
-           `CSR_ADDR_INSTRET   : instret_full[31:0] <= wdata_internal;
-           `CSR_ADDR_CYCLEH    : cycle_full[63:32] <= wdata_internal;
-           `CSR_ADDR_TIMEH     : time_full[63:32] <= wdata_internal;
-           `CSR_ADDR_INSTRETH  : instret_full[63:32] <= wdata_internal;
-           // mcpuid is read-only
-           // mimpid is read-only
-           // mhartid is read-only
-           // mstatus handled separately
-           `CSR_ADDR_MTVEC     : mtvec <= wdata_internal & {{30{1'b1}},2'b0};
-           // mtdeleg constant
-           // mie handled separately
-           `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata_internal;
-           `CSR_ADDR_MTIME     : mtime_full[31:0] <= wdata_internal;
-           `CSR_ADDR_MTIMEH    : mtime_full[63:32] <= wdata_internal;
-           `CSR_ADDR_MSCRATCH  : mscratch <= wdata_internal;
-           // mepc handled separately
-           // mcause handled separately
-           // mbadaddr handled separately
-           // mip handled separately
-           `CSR_ADDR_CYCLEW    : cycle_full[31:0] <= wdata_internal;
-           `CSR_ADDR_TIMEW     : time_full[31:0] <= wdata_internal;
-           `CSR_ADDR_INSTRETW  : instret_full[31:0] <= wdata_internal;
-           `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata_internal;
-           `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata_internal;
-           `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
-	   `CSR_ADDR_TO_HOST   : to_host <= wdata_internal;
-	   `CSR_ADDR_FROM_HOST : from_host <= wdata_internal;
-           default : begin
-              // errors handled on read access
-           end
-         endcase // case (addr)
-      end // if (wen_internal)
    end // always @ (posedge clk)
 
    
