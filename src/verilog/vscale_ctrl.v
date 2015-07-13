@@ -12,6 +12,7 @@
 		    input 			       dmem_wait,
 		    input 			       dmem_badmem_e,
 		    input 			       cmp_true,
+		    input [`PRV_WIDTH-1:0] 	       prv,
 		    output reg [`PC_SRC_SEL_WIDTH-1:0] PC_src_sel,
 		    output reg [`IMM_TYPE_WIDTH-1:0]   imm_type,
 		    output 			       bypass_rs1,
@@ -51,6 +52,7 @@
    // DX stage ctrl signals
    wire [6:0]                                         opcode = inst_DX[6:0];
    wire [6:0]                                         funct7 = inst_DX[31:25];
+   wire [11:0] 					      funct12 = inst_DX[31:20];
    wire [2:0]                                         funct3 = inst_DX[14:12];
    reg 						      illegal_opcode;
    wire [`REG_ADDR_WIDTH-1:0] 			      rs1_addr = inst_DX[19:15];
@@ -67,6 +69,7 @@
    reg                                                wr_reg_DX;
    wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
    wire                                               ex_DX;
+   reg 						      new_ex_DX;
    reg [`ECODE_WIDTH-1:0]                             ex_code_DX;
    
    // WB stage ctrl pipeline registers
@@ -115,21 +118,25 @@
 
    assign kill_DX = stall_DX || ex_DX || ex_WB;
    assign stall_DX = stall_WB || load_use;
-   assign ex_DX = had_ex_DX || ((0) && !stall_DX); // TODO: add causes
+   assign ex_DX = had_ex_DX || ((new_ex_DX) && !stall_DX); // TODO: add causes
 
    always @(*) begin
       // no other cause possible before DX
       ex_code_DX = `ECODE_INST_ADDR_MISALIGNED;
+      new_ex_DX = 0;
       if (!had_ex_DX) begin
+	 if (opcode == `RV32_SYSTEM && funct3 == `RV32_FUNCT3_PRIV) begin
+	 end // if (opcode == `RV32_SYSTEM && funct3 == `RV32_FUNCT3_PRIV)
 	 if (illegal_opcode || illegal_csr_access) begin
 	    ex_code_DX = `ECODE_ILLEGAL_INST;
+	    new_ex_DX = 1;
 	 end
       end
    end
    
-   assign branch_taken = ((opcode == `RV32_BRANCH) && cmp_true);
-   assign jal = (opcode == `RV32_JAL);
-   assign jalr = (opcode == `RV32_JALR);
+   assign branch_taken = ((opcode == `RV32_BRANCH) && cmp_true) && !kill_DX;
+   assign jal = (opcode == `RV32_JAL) && !kill_DX;
+   assign jalr = (opcode == `RV32_JALR) && !kill_DX;
 
    assign redirect = branch_taken || jal || jalr;
    

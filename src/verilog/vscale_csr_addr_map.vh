@@ -38,12 +38,19 @@
 `define CSR_SET       6
 `define CSR_CLEAR     7
 
-`define ECODE_WIDTH                   4
-`define ECODE_INST_ADDR_MISALIGNED    0
-`define ECODE_INST_ADDR_FAULT         1
-`define ECODE_ILLEGAL_INST            2
-`define ECODE_BREAKPOINT              3
-`define ECODE_LOAD_ADDR_MISALIGNED    4
+`define ECODE_WIDTH                      4
+`define ECODE_INST_ADDR_MISALIGNED       0
+`define ECODE_INST_ADDR_FAULT            1
+`define ECODE_ILLEGAL_INST               2
+`define ECODE_BREAKPOINT                 3
+`define ECODE_LOAD_ADDR_MISALIGNED       4
+`define ECODE_LOAD_ACCESS_FAULT          5
+`define ECODE_STORE_AMO_ADDR_MISALIGNED  6
+`define ECODE_STORE_AMO_ACCESS_FAULT     7
+`define ECODE_ECALL_FROM_U               8
+`define ECODE_ECALL_FROM_S               9
+`define ECODE_ECALL_FROM_H              10
+`define ECODE_ECALL_FROM_M              11
 
 `define ICODE_SOFTWARE 0
 `define ICODE_TIMER    1

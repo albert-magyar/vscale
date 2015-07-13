@@ -8,6 +8,7 @@ module vscale_csr_file(
 		       input [`CSR_ADDR_WIDTH-1:0]  addr,
 		       input [`CSR_CMD_WIDTH-1:0]   cmd,
 		       input [`XPR_LEN-1:0] 	    wdata,
+		       output wire [`PRV_WIDTH-1:0] prv,
 		       output 			    illegal_access,
 		       output reg [`XPR_LEN-1:0]    rdata,
 		       input 			    retire,
@@ -53,7 +54,6 @@ module vscale_csr_file(
    reg 						    mint;
    reg [`XPR_LEN-1:0] 				    mbadaddr;
    
-   wire [`PRV_WIDTH-1:0] 			    prv;
    wire 					    ie;
    
    wire [`XPR_LEN-1:0] 				    mcpuid;
