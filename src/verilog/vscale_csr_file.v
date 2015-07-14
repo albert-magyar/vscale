@@ -14,9 +14,11 @@ module vscale_csr_file(
 		       input 			    retire,
 		       input 			    exception,
 		       input [`ECODE_WIDTH-1:0]     exception_code,
+		       input 			    eret,
 		       input [`XPR_LEN-1:0] 	    exception_load_addr,
 		       input [`XPR_LEN-1:0] 	    exception_PC,
 		       output [`XPR_LEN-1:0] 	    handler_PC,
+		       output [`XPR_LEN-1:0] 	    epc,
 		       input 			    htif_reset,
 		       input 			    htif_pcr_req_valid,
 		       output 			    htif_pcr_req_ready,
@@ -168,9 +170,13 @@ module vscale_csr_file(
       end else if (exception) begin
          // no delegation to U means all exceptions go to M
          priv_stack <= {priv_stack[2:0],2'b11,1'b0};
+      end else if (eret) begin
+	 priv_stack <= {2'b00,1'b1,priv_stack[5:3]};
       end
-   end
-   
+   end // always @ (posedge clk)
+
+   assign epc = mepc;
+
    // this implementation has SD, VM, MPRV, XS, and FS set to 0
    assign mstatus = {26'b0, priv_stack};
 

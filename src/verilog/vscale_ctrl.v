@@ -23,6 +23,7 @@
 		    output wire 		       dmem_en,
 		    output wire 		       dmem_wen,
 		    output wire [2:0] 		       dmem_size,
+		    output wire 		       eret,
 		    output reg [`CSR_CMD_WIDTH-1:0]    csr_cmd,
 		    output reg 			       csr_imm_sel,
 		    input 			       illegal_csr_access,
@@ -54,30 +55,39 @@
    wire [6:0]                                         funct7 = inst_DX[31:25];
    wire [11:0] 					      funct12 = inst_DX[31:20];
    wire [2:0]                                         funct3 = inst_DX[14:12];
-   reg 						      illegal_opcode;
    wire [`REG_ADDR_WIDTH-1:0] 			      rs1_addr = inst_DX[19:15];
    wire [`REG_ADDR_WIDTH-1:0] 			      rs2_addr = inst_DX[24:20];
    wire [`REG_ADDR_WIDTH-1:0]                         reg_to_wr_DX = inst_DX[11:7];
+   reg 						      illegal_instruction;
+   reg 						      ebreak;
+   reg 						      ecall;
+   reg 						      eret_unkilled;
+   reg 						      fence_i;   
    wire [`ALU_OP_WIDTH-1:0]                           add_or_sub;
    wire [`ALU_OP_WIDTH-1:0]                           srl_or_sra;
    reg [`ALU_OP_WIDTH-1:0]                            alu_op_arith;
-   reg [`ALU_OP_WIDTH-1:0]                            alu_op_branch;
+   reg 						      branch_taken_unkilled;
    wire 					      branch_taken;
+   reg 						      dmem_en_unkilled;
+   reg 						      dmem_wen_unkilled;
+   reg 						      jal_unkilled;
    wire 					      jal;
+   reg 						      jalr_unkilled;
    wire 					      jalr;
-   wire                                               redirect;
-   reg                                                wr_reg_DX;
-   wire [`WB_SRC_SEL_WIDTH-1:0]                       wb_src_sel_DX;
-   wire                                               ex_DX;
-   reg 						      new_ex_DX;
-   reg [`ECODE_WIDTH-1:0]                             ex_code_DX;
-   
+   wire 					      redirect;
+   reg 						      wr_reg_unkilled_DX;
+   wire 					      wr_reg_DX;
+   reg 						      wb_src_sel_DX;
+   wire 					      new_ex_DX;
+   wire 					      ex_DX;
+   reg 						      ex_code_DX;
+      
    // WB stage ctrl pipeline registers
    reg                               wr_reg_unkilled_WB;
    reg                               had_ex_WB;
    reg [`ECODE_WIDTH-1:0]            prev_ex_code_WB;
+   reg 				     store_in_WB;
    
-
    // WB stage ctrl signals
    wire                              ex_WB;
    reg [`ECODE_WIDTH-1:0]            ex_code_WB;
@@ -91,14 +101,14 @@
    reg 				     uses_rs2;
    wire 			     raw_rs1;
    wire 			     raw_rs2;
-   
+
    // IF stage ctrl
    
    always @(posedge clk) begin
       if (reset) begin
          replay_IF <= 1'b1;
       end else begin
-         replay_IF <= redirect && imem_wait;
+         replay_IF <= (redirect && imem_wait) || (fence_i && store_in_WB);
       end
    end
 
@@ -107,7 +117,7 @@
    assign ex_IF = imem_badmem_e && !imem_wait && !redirect && !replay_IF;
 
    // DX stage ctrl
-   
+
    always @(posedge clk) begin
       if (reset || (kill_IF && !stall_DX)) begin
          had_ex_DX <= 0;
@@ -117,108 +127,170 @@
    end
 
    assign kill_DX = stall_DX || ex_DX || ex_WB;
-   assign stall_DX = stall_WB || load_use;
+   assign stall_DX = stall_WB || load_use || (fence_i && store_in_WB);
+   assign new_ex_DX = ebreak || ecall;
    assign ex_DX = had_ex_DX || ((new_ex_DX) && !stall_DX); // TODO: add causes
 
    always @(*) begin
-      // no other cause possible before DX
       ex_code_DX = `ECODE_INST_ADDR_MISALIGNED;
-      new_ex_DX = 0;
-      if (!had_ex_DX) begin
-	 if (opcode == `RV32_SYSTEM && funct3 == `RV32_FUNCT3_PRIV) begin
-	 end // if (opcode == `RV32_SYSTEM && funct3 == `RV32_FUNCT3_PRIV)
-	 if (illegal_opcode || illegal_csr_access) begin
-	    ex_code_DX = `ECODE_ILLEGAL_INST;
-	    new_ex_DX = 1;
-	 end
-      end
-   end
-   
-   assign branch_taken = ((opcode == `RV32_BRANCH) && cmp_true) && !kill_DX;
-   assign jal = (opcode == `RV32_JAL) && !kill_DX;
-   assign jalr = (opcode == `RV32_JALR) && !kill_DX;
-
-   assign redirect = branch_taken || jal || jalr;
-   
-   always @(*) begin
-      if (exception) begin
-         PC_src_sel = `PC_HANDLER;
-      end else if (replay_IF) begin
-	 PC_src_sel = `PC_REPLAY;
-      end else if (branch_taken) begin
-         PC_src_sel = `PC_BRANCH_TARGET;
-      end else if (jal) begin
-         PC_src_sel = `PC_JAL_TARGET;
-      end else if (jalr) begin
-         PC_src_sel = `PC_REG_TARGET;
-      end else begin
-         PC_src_sel = `PC_PLUS_FOUR;
+      if (had_ex_DX) begin
+	 ex_code_DX = `ECODE_INST_ADDR_MISALIGNED;
+      end else if (illegal_instruction) begin
+	 ex_code_DX = `ECODE_ILLEGAL_INST;
+      end else if (illegal_csr_access) begin
+	 ex_code_DX = `ECODE_ILLEGAL_INST;
+      end else if (ebreak) begin
+	 ex_code_DX = `ECODE_BREAKPOINT;
+      end else if (ecall) begin
+	 ex_code_DX = `ECODE_ECALL_FROM_U + prv;
       end
    end // always @ begin
-
-   always @(*) begin
-      case (opcode)
-	`RV32_LUI : uses_rs1 = 1'b0;
-	`RV32_AUIPC : uses_rs1 = 1'b0;
-	`RV32_JAL : uses_rs1 = 1'b0;
-	default : uses_rs1 = 1'b1;
-      endcase // case (opcode)
-   end // always @ begin
-
-   always @(*) begin
-      case (opcode)
-	`RV32_OP : uses_rs2 = 1'b1;
-	`RV32_BRANCH : uses_rs2 = 1'b1;
-	`RV32_STORE : uses_rs2 = 1'b1;
-	default : uses_rs2 = 1'b0;
-      endcase // case (opcode)
-   end // always @ begin
-
+   
+   
+   /*
+    Note: the convention is to use an initial default
+    assignment for all control signals (except for
+    illegal instructions) and override the default
+    values when appropriate, rather than using the
+    default keyword. The exception is for illegal
+    instructions; in the interest of brevity, this
+    signal is set in the default case of any case
+    statement after initially being zero.
+    */
+   
+   assign dmem_size = funct3;
    
    always @(*) begin
+      illegal_instruction = 1'b0;
+      csr_cmd = `CSR_IDLE;
+      csr_imm_sel = funct3[2];
+      ecall = 1'b0;
+      ebreak = 1'b0;
+      eret_unkilled = 1'b0;
+      fence_i = 1'b0;
+      branch_taken_unkilled = 1'b0;
+      jal_unkilled = 1'b0;
+      jalr_unkilled = 1'b0;
+      uses_rs1 = 1'b1;
+      uses_rs2 = 1'b0;
+      imm_type = `IMM_I;
+      src_a_sel = `SRC_A_RS1;
+      src_b_sel = `SRC_B_IMM;
+      alu_op = `ALU_OP_ADD;
+      dmem_en_unkilled = 1'b0;
+      dmem_wen_unkilled = 1'b0;
+      wr_reg_unkilled_DX = 1'b0;
+      wb_src_sel_DX = `WB_SRC_ALU;
       case (opcode)
-        `RV32_LUI : src_a_sel = `SRC_A_ZERO;
-        `RV32_AUIPC : src_a_sel = `SRC_A_PC;
-        `RV32_JAL : src_a_sel = `SRC_A_PC;
-        `RV32_JALR : src_a_sel = `SRC_A_PC;
-        default : src_a_sel = `SRC_A_RS1;
-      endcase // case (opcode)
-   end // always @ begin
-
-   always @(*) begin
-      case (opcode)
-        `RV32_JAL : src_b_sel = `SRC_B_FOUR;
-        `RV32_JALR : src_b_sel = `SRC_B_FOUR;
-        `RV32_BRANCH : src_b_sel = `SRC_B_RS2;
-        `RV32_OP : src_b_sel = `SRC_B_RS2;
-        default : src_b_sel = `SRC_B_IMM;
-      endcase // case (opcode)
-   end // always @ begin
-   
-   always @(*) begin
-      case (opcode)
-        `RV32_OP_IMM : imm_type = `IMM_I;
-        `RV32_LUI : imm_type = `IMM_U;
-        `RV32_AUIPC : imm_type = `IMM_U;
-        `RV32_JAL : imm_type = `IMM_J;
-        `RV32_LOAD : imm_type = `IMM_I;
-        `RV32_STORE : imm_type = `IMM_S;
-        default : imm_type = `IMM_I;
+	`RV32_LOAD : begin
+	   dmem_en_unkilled = 1'b1;
+	   wr_reg_unkilled_DX = 1'b1;
+	   wb_src_sel_DX = `WB_SRC_MEM;
+	end
+	`RV32_STORE : begin
+	   uses_rs2 = 1'b1;
+	   imm_type = `IMM_S;
+	   dmem_en_unkilled = 1'b1;
+	   dmem_wen_unkilled = 1'b1;
+	end
+	`RV32_BRANCH : begin
+	   branch_taken_unkilled = cmp_true;
+	   src_b_sel = `SRC_B_RS2;
+	   case (funct3)
+	     `RV32_FUNCT3_BEQ : alu_op = `ALU_OP_SEQ;
+	     `RV32_FUNCT3_BNE : alu_op = `ALU_OP_SNE;
+	     `RV32_FUNCT3_BLT : alu_op = `ALU_OP_SLT;
+	     `RV32_FUNCT3_BLTU : alu_op = `ALU_OP_SLTU;
+	     `RV32_FUNCT3_BGE : alu_op = `ALU_OP_SGE;
+	     `RV32_FUNCT3_BGEU : alu_op = `ALU_OP_SGEU;
+	     default : illegal_instruction = 1'b1;
+	   endcase // case (funct3)
+	end
+	`RV32_JAL : begin
+	   jal_unkilled = 1'b1;
+	   uses_rs1 = 1'b0;
+	   src_a_sel = `SRC_A_PC;
+	   src_b_sel = `SRC_B_FOUR;
+	   wr_reg_unkilled_DX = 1'b1;
+	end
+	`RV32_JALR : begin
+	   illegal_instruction = (funct3 != 0);
+	   jalr_unkilled = 1'b1;
+	   src_a_sel = `SRC_A_PC;
+	   src_b_sel = `SRC_B_FOUR;
+	   wr_reg_unkilled_DX = 1'b1;
+	end
+	`RV32_MISC_MEM : begin
+	   case (funct3)
+	     `RV32_FUNCT3_FENCE : begin
+		if ((inst_DX[31:20] == 0) && (rs1_addr == 0) && (reg_to_wr_DX != 0))
+		  ; // most fences are no-ops
+		else
+		  illegal_instruction = 1'b1;
+	     end
+	     `RV32_FUNCT3_FENCE_I : begin
+		if ((inst_DX[31:20] == 0) && (rs1_addr == 0) && (reg_to_wr_DX != 0))
+		  fence_i = 1'b1;
+		else
+		  illegal_instruction = 1'b1;
+	     end
+	     default : illegal_instruction = 1'b1;
+	   endcase // case (funct3)
+	end
+	`RV32_OP_IMM : begin
+	   alu_op = alu_op_arith;
+	   wr_reg_unkilled_DX = 1'b1;	   
+	end
+	`RV32_OP  : begin
+	   uses_rs2 = 1'b1;
+	   src_b_sel = `SRC_B_RS2;
+	   alu_op = alu_op_arith;
+	   wr_reg_unkilled_DX = 1'b1;
+	end
+	`RV32_SYSTEM : begin
+	   wb_src_sel_DX = `WB_SRC_CSR;
+	   case (funct3)
+	     `RV32_FUNCT3_PRIV : begin
+		if ((rs1_addr == 0) && (reg_to_wr_DX == 0)) begin
+		   case (funct12)
+		     `RV32_FUNCT12_ECALL : ecall = 1'b1;
+		     `RV32_FUNCT12_EBREAK : ebreak = 1'b1;
+		     `RV32_FUNCT12_ERET : begin
+			if (prv == 0)
+			  illegal_instruction = 1'b1;
+			else
+			  eret_unkilled = 1'b1;
+		     end
+		     default : illegal_instruction = 1'b1;
+		   endcase // case (funct12)
+		end // if ((rs1_addr == 0) && (reg_to_wr_DX == 0))
+	     end // case: `RV32_FUNCT3_PRIV
+	     `RV32_FUNCT3_CSRRW : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_WRITE;
+	     `RV32_FUNCT3_CSRRS : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_SET;
+	     `RV32_FUNCT3_CSRRC : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_CLEAR;
+	     `RV32_FUNCT3_CSRRWI : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_WRITE;
+	     `RV32_FUNCT3_CSRRSI : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_SET;
+	     `RV32_FUNCT3_CSRRCI : csr_cmd = (rs1_addr == 0) ? `CSR_READ : `CSR_CLEAR;
+	     default : illegal_instruction = 1'b1;
+	   endcase // case (funct3)
+	end
+	`RV32_AUIPC : begin
+	   uses_rs1 = 1'b0;
+	   src_a_sel = `SRC_A_PC;
+	   imm_type = `IMM_U;
+	   wr_reg_unkilled_DX = 1'b1;
+	end
+	`RV32_LUI : begin
+	   uses_rs1 = 1'b0;
+	   src_a_sel = `SRC_A_ZERO;
+	   imm_type = `IMM_U;
+	   wr_reg_unkilled_DX = 1'b1;
+	end
+	default : begin
+	   illegal_instruction = 1'b1;
+	end	
       endcase // case (opcode)
    end // always @ (*)
-
-   always @(*) begin
-      case (opcode)
-        `RV32_OP_IMM : wr_reg_DX = 1'b1;
-        `RV32_OP : wr_reg_DX = 1'b1;
-        `RV32_LUI : wr_reg_DX = 1'b1;
-        `RV32_AUIPC : wr_reg_DX = 1'b1;
-        `RV32_JAL : wr_reg_DX = 1'b1;
-        `RV32_JALR : wr_reg_DX = 1'b1;
-        `RV32_LOAD : wr_reg_DX = 1'b1;
-        default : wr_reg_DX = 1'b0;
-      endcase // case (opcode)
-   end
 
    assign add_or_sub = ((opcode == `RV32_OP) && (funct7[4])) ? `ALU_OP_SUB : `ALU_OP_ADD;
    assign srl_or_sra = (funct7[4]) ? `ALU_OP_SRA : `ALU_OP_SRL;
@@ -236,77 +308,34 @@
         default : alu_op_arith = `ALU_OP_ADD;
       endcase // case (funct3)
    end // always @ begin
+   
+   assign branch_taken = branch_taken_unkilled && !kill_DX;
+   assign jal = jal_unkilled && !kill_DX;
+   assign jalr = jalr_unkilled && !kill_DX;
+   assign eret = eret_unkilled && !kill_DX;
+   assign dmem_en = dmem_en_unkilled && !kill_DX;
+   assign dmem_wen = dmem_wen_unkilled && !kill_DX;
+   assign wr_reg_DX = wr_reg_unkilled_DX && !kill_DX;
+
+   assign redirect = branch_taken || jal || jalr || eret;
 
    always @(*) begin
-      case (funct3)
-        `RV32_FUNCT3_BEQ : alu_op_branch = `ALU_OP_SEQ;
-        `RV32_FUNCT3_BNE : alu_op_branch = `ALU_OP_SNE;
-        `RV32_FUNCT3_BLT : alu_op_branch = `ALU_OP_SLT;
-        `RV32_FUNCT3_BGE : alu_op_branch = `ALU_OP_SGE;
-        `RV32_FUNCT3_BLTU : alu_op_branch = `ALU_OP_SLTU;
-        `RV32_FUNCT3_BGEU : alu_op_branch = `ALU_OP_SGEU;
-        default : alu_op_branch = `ALU_OP_SEQ;
-      endcase // case (funct3)
-   end // always @ begin
-
-   always @(*) begin
-      case (opcode)
-        `RV32_OP : alu_op = alu_op_arith;
-        `RV32_OP_IMM : alu_op = alu_op_arith;
-        `RV32_BRANCH : alu_op = alu_op_branch;
-        default : alu_op = `ALU_OP_ADD;
-      endcase // case (opcode)
-   end // always @ begin
-   //           
-   assign reg_to_wr_DX = inst_DX[11:7];
-   assign rs1_addr = inst_DX[19:15];
-   assign rs2_addr = inst_DX[24:20];
-
-   assign wb_src_sel_DX = (opcode == `RV32_LOAD) ? `WB_SRC_MEM : (csr_cmd != `CSR_IDLE) ? `WB_SRC_CSR : `WB_SRC_ALU;
-   assign dmem_en = ((opcode == `RV32_LOAD) || (opcode == `RV32_STORE)) && !kill_DX;
-   assign dmem_wen = (opcode == `RV32_STORE) && !kill_DX;
-   assign dmem_size = funct3;
-
-
-   // csr access decoding requires some well-chosen encodings
-   // lower 2 bits of funct3 map directly to lower 2 bits of cmd on modify
-   // top bit of cmd indicates access
-   // top bit of funct3 indicates imm
-   always @(*) begin
-      csr_cmd = `CSR_IDLE;
-      csr_imm_sel = funct3[2];
-      if (opcode == `RV32_SYSTEM && funct3[1:0] != 2'b0) begin
-	 csr_cmd = (inst_DX[19:15] == 5'b0) ? `CSR_READ : {1'b1,funct3[1:0]};
+      if (exception) begin
+         PC_src_sel = `PC_HANDLER;
+      end else if (replay_IF) begin
+	 PC_src_sel = `PC_REPLAY;
+      end else if (eret) begin
+	 PC_src_sel = `PC_EPC;
+      end else if (branch_taken) begin
+         PC_src_sel = `PC_BRANCH_TARGET;
+      end else if (jal) begin
+         PC_src_sel = `PC_JAL_TARGET;
+      end else if (jalr) begin
+         PC_src_sel = `PC_JALR_TARGET;
+      end else begin
+         PC_src_sel = `PC_PLUS_FOUR;
       end
    end // always @ begin
-
-   always @(*) begin
-      case (opcode)
-	`RV32_LOAD     : illegal_opcode = 1'b0;
-	`RV32_STORE    : illegal_opcode = 1'b0;
-	`RV32_MADD     : illegal_opcode = 1'b0;
-	`RV32_BRANCH   : illegal_opcode = 1'b0;
-	`RV32_LOAD_FP  : illegal_opcode = 1'b0;
-	`RV32_STORE_FP : illegal_opcode = 1'b0; 
-	`RV32_MSUB     : illegal_opcode = 1'b0;
-	`RV32_JALR     : illegal_opcode = 1'b0;
-	`RV32_CUSTOM_0 : illegal_opcode = 1'b0;
-	`RV32_CUSTOM_1 : illegal_opcode = 1'b0;
-	`RV32_NMSUB    : illegal_opcode = 1'b0;
-	`RV32_MISC_MEM : illegal_opcode = 1'b0;
-	`RV32_AMO      : illegal_opcode = 1'b0;
-	`RV32_NMADD    : illegal_opcode = 1'b0;
-	`RV32_JAL      : illegal_opcode = 1'b0;
-	`RV32_OP_IMM   : illegal_opcode = 1'b0;
-	`RV32_OP       : illegal_opcode = 1'b0;
-	`RV32_OP_FP    : illegal_opcode = 1'b0;
-	`RV32_SYSTEM   : illegal_opcode = 1'b0;
-	`RV32_AUIPC    : illegal_opcode = 1'b0;
-	`RV32_LUI      : illegal_opcode = 1'b0;
-	default : illegal_opcode = 1'b1;
-	endcase // case (opcode)
-   end // always @ begin
-   
 
    // WB stage ctrl
    
@@ -314,12 +343,14 @@
       if (reset || (kill_DX && !stall_WB)) begin
          wr_reg_unkilled_WB <= 0;
          had_ex_WB <= 0;
+	 store_in_WB <= 0;
       end else if (!stall_WB) begin
          wr_reg_unkilled_WB <= wr_reg_DX;
          wb_src_sel_WB <= wb_src_sel_DX;
          had_ex_WB <= ex_DX;
 	 prev_ex_code_WB <= ex_code_DX;
          reg_to_wr_WB <= reg_to_wr_DX;
+	 store_in_WB <= dmem_wen;
       end
    end
    
@@ -332,7 +363,9 @@
       ex_code_WB = prev_ex_code_WB;
       if (!had_ex_WB) begin
 	 if (dmem_access_exception) begin
-	    ex_code_WB = `ECODE_LOAD_ADDR_MISALIGNED;
+	    ex_code_WB = wr_reg_unkilled_WB ?
+		      `ECODE_LOAD_ADDR_MISALIGNED :
+		      `ECODE_STORE_AMO_ADDR_MISALIGNED;
 	 end
       end
    end

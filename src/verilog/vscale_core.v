@@ -88,6 +88,8 @@ module vscale_core(
    wire 			 exception_WB;
    wire [`ECODE_WIDTH-1:0] 	 exception_code_WB;
    wire [`XPR_LEN-1:0]           handler_PC;
+   wire 			 eret;
+   wire [`XPR_LEN-1:0] 		 epc;
    
    vscale_ctrl ctrl(
                     .clk(clk),
@@ -123,18 +125,19 @@ module vscale_core(
 		    .csr_cmd(csr_cmd),
 		    .csr_imm_sel(csr_imm_sel),
 		    .illegal_csr_access(illegal_csr_access),
-		    .prv(prv)
+		    .prv(prv),
+		    .eret(eret)
                     );
    
    
    vscale_PC_mux PCmux(
                        .PC_src_sel(PC_src_sel),
                        .inst_DX(inst_DX),
-                       .alu_out(alu_out),
                        .rs1_data(rs1_data_bypassed),
                        .PC_IF(PC_IF),
                        .PC_DX(PC_DX),
                        .handler_PC(handler_PC),
+		       .epc(epc),
                        .PC_PIF(PC_PIF)
                        );
    
@@ -258,6 +261,8 @@ module vscale_core(
   		       .exception_code(exception_code_WB),
 		       .exception_load_addr(alu_out_WB),
 		       .exception_PC(PC_WB),
+		       .epc(epc),
+		       .eret(eret),
 		       .handler_PC(handler_PC),
 		       .htif_reset(htif_reset),
 		       .htif_pcr_req_valid(htif_pcr_req_valid),

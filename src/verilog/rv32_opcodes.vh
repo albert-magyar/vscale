@@ -63,6 +63,10 @@
 `define RV32_FUNCT3_BLTU 6
 `define RV32_FUNCT3_BGEU 7
 
+// MISC-MEM FUNCT3 encodings
+`define RV32_FUNCT3_FENCE   0
+`define RV32_FUNCT3_FENCE_I 1
+
 // SYSTEM FUNCT3 encodings
 
 `define RV32_FUNCT3_PRIV   0
