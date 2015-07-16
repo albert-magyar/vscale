@@ -1,11 +1,13 @@
 VCS = vcs -full64
 
 VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
-	+define+DEBUG -debug_pp \
+	+define+DEBUG -debug_pp -noIncrComp \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
 	-CC "-std=c++11" \
 
-VCS_TB = vscale_top_tb.v
+VCS_BASIC_TB = vscale_basic_tb.v
+
+VCS_HEX_TB = vscale_hex_tb.v
 
 VERILATOR = verilator
 
@@ -37,20 +39,25 @@ vscale_alu_ops.vh \
 vscale_hasti_constants.vh \
 vscale_csr_addr_map.vh
 
-vscale.vcd: vscale.vpd
+default: simv vscale-basic.vcd
+
+simv: $(VCS_HEX_TB) $(SRCS) $(HDRS)
+	$(VCS) $(VCS_OPTS) -o $@ $(VCS_HEX_TB) $(SRCS)
+
+vscale-basic.vcd: vscale-basic.vpd
 	vpd2vcd $< $@
 
-vscale.vpd: simv vscale_simple_test.bin
-	./simv
+vscale-basic.vpd: simv-basic vscale_simple_test.bin
+	./simv-basic
 
-simv: $(VCS_TB) $(SRCS) $(HDRS)
-	$(VCS) $(VCS_OPTS) $(VCS_TB) $(SRCS)
+simv-basic: $(VCS_BASIC_TB) $(SRCS) $(HDRS)
+	$(VCS) $(VCS_OPTS) -o $@ $(VCS_BASIC_TB) $(SRCS)
 
 compile-verilator:
 	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(SRCS) --exe $(VERILATOR_CPP_TB)
 	cd obj_dir && make -f Vvscale_verilator_top.mk Vvscale_verilator_top
 
 clean:
-	rm -rf simv obj_dir
+	rm -rf simv simv-basic obj_dir *.vcd *.vpd *.daidir
 
 .PHONY: clean compile-verilator

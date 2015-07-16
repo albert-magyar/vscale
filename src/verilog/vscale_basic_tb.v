@@ -1,7 +1,7 @@
 `include "vscale_ctrl_constants.vh"
 `include "vscale_csr_addr_map.vh"
 
-module vscale_top_tb();
+module vscale_basic_tb();
 
    reg clk;
    reg reset;
@@ -40,7 +40,7 @@ module vscale_top_tb();
 
       $readmemb("vscale_simple_test.bin", DUT.imem.mem);
       
-      $vcdplusfile ("vscale.vpd");
+      $vcdplusfile ("vscale-basic.vpd");
       $vcdpluson();
       $vcdplusmemon();
 
