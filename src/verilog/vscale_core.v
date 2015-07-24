@@ -145,7 +145,7 @@ module vscale_core(
    
    always @(posedge clk) begin
       if (reset) begin
-         PC_IF <= 0;
+         PC_IF <= `XPR_LEN'h200;
       end else if (~stall_IF) begin
          PC_IF <= PC_PIF;        
       end

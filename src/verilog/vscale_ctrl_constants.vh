@@ -29,4 +29,4 @@
 `define WB_SRC_MEM  `WB_SRC_SEL_WIDTH'd1
 `define WB_SRC_CSR  `WB_SRC_SEL_WIDTH'd2
 
-`define HTIF_PCR_WIDTH 32
+`define HTIF_PCR_WIDTH 64

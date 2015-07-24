@@ -46,8 +46,8 @@ module vscale_top(
    assign htif_reset = reset;
    
    vscale_hasti_wrapper vscale(
-			       .hclk(clk),
-			       .hresetn(resetn),
+			       .clk(clk),
+			       .reset(reset),
 			       .imem_haddr(imem_haddr),
 			       .imem_hwrite(imem_hwrite),
 			       .imem_hsize(imem_hsize),

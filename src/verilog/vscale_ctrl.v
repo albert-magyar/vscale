@@ -87,7 +87,8 @@
    reg                               had_ex_WB;
    reg [`ECODE_WIDTH-1:0]            prev_ex_code_WB;
    reg 				     store_in_WB;
-   
+   reg 				     dmem_en_WB;
+ 				     
    // WB stage ctrl signals
    wire                              ex_WB;
    reg [`ECODE_WIDTH-1:0]            ex_code_WB;
@@ -119,7 +120,7 @@
    // DX stage ctrl
 
    always @(posedge clk) begin
-      if (reset || (kill_IF && !stall_DX)) begin
+      if (reset) begin
          had_ex_DX <= 0;
       end else if (!stall_DX) begin
          had_ex_DX <= ex_IF;
@@ -338,24 +339,32 @@
    end // always @ begin
 
    // WB stage ctrl
+
+   always @(posedge clk) begin
+      if (reset) begin
+	 had_ex_WB <= 0;
+      end else if (!stall_WB) begin
+         had_ex_WB <= ex_DX;
+      end
+   end
    
    always @(posedge clk) begin
       if (reset || (kill_DX && !stall_WB)) begin
          wr_reg_unkilled_WB <= 0;
-         had_ex_WB <= 0;
 	 store_in_WB <= 0;
+	 dmem_en_WB <= 0;
       end else if (!stall_WB) begin
          wr_reg_unkilled_WB <= wr_reg_DX;
          wb_src_sel_WB <= wb_src_sel_DX;
-         had_ex_WB <= ex_DX;
 	 prev_ex_code_WB <= ex_code_DX;
          reg_to_wr_WB <= reg_to_wr_DX;
 	 store_in_WB <= dmem_wen;
+	 dmem_en_WB <= dmem_en;
       end
    end
    
    assign kill_WB = stall_WB || ex_WB;
-   assign stall_WB = dmem_wait;
+   assign stall_WB = dmem_wait && dmem_en_WB;
    assign dmem_access_exception = dmem_badmem_e && !stall_WB; 
    assign ex_WB = had_ex_WB || dmem_access_exception;
 

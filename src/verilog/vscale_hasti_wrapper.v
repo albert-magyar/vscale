@@ -2,8 +2,7 @@
 `include "vscale_csr_addr_map.vh"
 
 module vscale_hasti_wrapper(
-                            input 			 hclk,
-                            input 			 hresetn,
+                            input 			 clk,
                             output [31:0] 		 imem_haddr,
                             output 			 imem_hwrite,
                             output [2:0] 		 imem_hsize,
@@ -27,6 +26,7 @@ module vscale_hasti_wrapper(
                             input 			 dmem_hready,
                             input 			 dmem_hresp,
 			    input 			 htif_reset,
+			    input 			 htif_id,
 			    input 			 htif_pcr_req_valid,
 			    output 			 htif_pcr_req_ready,
 			    input 			 htif_pcr_req_rw,
@@ -34,10 +34,15 @@ module vscale_hasti_wrapper(
 			    input [`HTIF_PCR_WIDTH-1:0]  htif_pcr_req_data,
 			    output 			 htif_pcr_resp_valid,
 			    input 			 htif_pcr_resp_ready,
-			    output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
+			    output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data,
+			    input 			 htif_ipi_req_ready,
+			    output 			 htif_ipi_req_valid,
+			    output 			 htif_ipi_req_data,
+			    output 			 htif_ipi_resp_ready,
+			    input 			 htif_ipi_resp_valid,
+			    input 			 htif_ipi_resp_data,
+			    output 			 htif_debug_stats_pcr
                             );
-   
-   wire                                   reset = ~hresetn;
    
    wire                                   imem_wait;
    wire [31:0]                            imem_addr;
@@ -51,6 +56,7 @@ module vscale_hasti_wrapper(
    wire [31:0]                            dmem_wdata_delayed;
    wire [31:0]                            dmem_rdata;
    wire                                   dmem_badmem_e;
+
    
    vscale_hasti_bridge imem_bridge(
                                    .haddr(imem_haddr),
@@ -98,8 +104,8 @@ module vscale_hasti_wrapper(
 
 
    vscale_core core(
-                    .clk(hclk),
-                    .reset(reset),
+                    .clk(clk),
+                    .reset(htif_reset),
                     .imem_wait(imem_wait),
                     .imem_addr(imem_addr),
                     .imem_rdata(imem_rdata),
