@@ -70,7 +70,8 @@ module vscale_core(
 
    wire 			 kill_WB;
    wire                          stall_WB;
-   reg [`XPR_LEN-1:0]            wb_data_WB;
+   wire [`XPR_LEN-1:0] 		 bypass_data_WB;
+   reg [`XPR_LEN-1:0] 		 wb_data_WB;
    wire [`REG_ADDR_WIDTH-1:0]    reg_to_wr_WB;
    wire                          wr_reg_WB;
    wire [`WB_SRC_SEL_WIDTH-1:0]  wb_src_sel_WB;   
@@ -199,8 +200,8 @@ module vscale_core(
                               .alu_src_b(alu_src_b)
                               );
    
-   assign rs1_data_bypassed = bypass_rs1 ? alu_out_WB : rs1_data;
-   assign rs2_data_bypassed = bypass_rs2 ? alu_out_WB : rs2_data;
+   assign rs1_data_bypassed = bypass_rs1 ? bypass_data_WB : rs1_data;
+   assign rs2_data_bypassed = bypass_rs2 ? bypass_data_WB : rs2_data;
 
    vscale_alu alu(
                   .op(alu_op),
@@ -228,13 +229,16 @@ module vscale_core(
          csr_rdata_WB <= csr_rdata;
       end
    end
+
+
+   assign bypass_data_WB = (wb_src_sel_WB == `WB_SRC_CSR) ? csr_rdata_WB : alu_out_WB;
    
    always @(*) begin
       case (wb_src_sel_WB)
-        `WB_SRC_ALU : wb_data_WB = alu_out_WB;
+        `WB_SRC_ALU : wb_data_WB = bypass_data_WB;
         `WB_SRC_MEM : wb_data_WB = dmem_rdata;
-        `WB_SRC_CSR : wb_data_WB = csr_rdata_WB;
-        default : wb_data_WB = alu_out_WB;
+        `WB_SRC_CSR : wb_data_WB = bypass_data_WB;
+	default : wb_data_WB = bypass_data_WB;
       endcase
    end
    

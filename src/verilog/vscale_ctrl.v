@@ -49,7 +49,8 @@
     
    // DX stage ctrl pipeline registers
    reg                                                had_ex_DX;
-    
+   reg 						      prev_killed_DX;
+   
    // DX stage ctrl signals
    wire [6:0]                                         opcode = inst_DX[6:0];
    wire [6:0]                                         funct7 = inst_DX[31:25];
@@ -77,24 +78,26 @@
    wire 					      redirect;
    reg 						      wr_reg_unkilled_DX;
    wire 					      wr_reg_DX;
-   reg 						      wb_src_sel_DX;
+   reg [`WB_SRC_SEL_WIDTH-1:0] 			      wb_src_sel_DX;
    wire 					      new_ex_DX;
    wire 					      ex_DX;
-   reg 						      ex_code_DX;
-      
+   reg [`ECODE_WIDTH-1:0] 			      ex_code_DX;
+   wire 					      killed_DX;
+   
    // WB stage ctrl pipeline registers
    reg                               wr_reg_unkilled_WB;
    reg                               had_ex_WB;
    reg [`ECODE_WIDTH-1:0]            prev_ex_code_WB;
    reg 				     store_in_WB;
    reg 				     dmem_en_WB;
- 				     
+   reg 				     prev_killed_WB;
+   
    // WB stage ctrl signals
    wire                              ex_WB;
    reg [`ECODE_WIDTH-1:0]            ex_code_WB;
    wire 			     dmem_access_exception;
-   wire 			     exception;
-   assign exception = ex_WB;
+   wire 			     exception = ex_WB;
+   wire 			     killed_WB;
 
    // Hazard signals
    wire 			     load_use;
@@ -122,8 +125,10 @@
    always @(posedge clk) begin
       if (reset) begin
          had_ex_DX <= 0;
+	 prev_killed_DX <= 0;
       end else if (!stall_DX) begin
          had_ex_DX <= ex_IF;
+	 prev_killed_DX <= kill_IF;
       end
    end
 
@@ -131,7 +136,8 @@
    assign stall_DX = stall_WB || load_use || (fence_i && store_in_WB);
    assign new_ex_DX = ebreak || ecall;
    assign ex_DX = had_ex_DX || ((new_ex_DX) && !stall_DX); // TODO: add causes
-
+   assign killed_DX = prev_killed_DX || kill_DX;
+   
    always @(*) begin
       ex_code_DX = `ECODE_INST_ADDR_MISALIGNED;
       if (had_ex_DX) begin
@@ -195,6 +201,7 @@
 	   dmem_wen_unkilled = 1'b1;
 	end
 	`RV32_BRANCH : begin
+	   uses_rs2 = 1'b1;
 	   branch_taken_unkilled = cmp_true;
 	   src_b_sel = `SRC_B_RS2;
 	   case (funct3)
@@ -250,6 +257,7 @@
 	end
 	`RV32_SYSTEM : begin
 	   wb_src_sel_DX = `WB_SRC_CSR;
+	   wr_reg_unkilled_DX = (funct3 != `RV32_FUNCT3_PRIV);
 	   case (funct3)
 	     `RV32_FUNCT3_PRIV : begin
 		if ((rs1_addr == 0) && (reg_to_wr_DX == 0)) begin
@@ -342,18 +350,14 @@
 
    always @(posedge clk) begin
       if (reset) begin
+	 prev_killed_WB <= 0;
 	 had_ex_WB <= 0;
-      end else if (!stall_WB) begin
-         had_ex_WB <= ex_DX;
-      end
-   end
-   
-   always @(posedge clk) begin
-      if (reset || (kill_DX && !stall_WB)) begin
          wr_reg_unkilled_WB <= 0;
 	 store_in_WB <= 0;
 	 dmem_en_WB <= 0;
       end else if (!stall_WB) begin
+	 prev_killed_WB <= killed_DX;
+	 had_ex_WB <= ex_DX;
          wr_reg_unkilled_WB <= wr_reg_DX;
          wb_src_sel_WB <= wb_src_sel_DX;
 	 prev_ex_code_WB <= ex_code_DX;
@@ -367,7 +371,8 @@
    assign stall_WB = dmem_wait && dmem_en_WB;
    assign dmem_access_exception = dmem_badmem_e && !stall_WB; 
    assign ex_WB = had_ex_WB || dmem_access_exception;
-
+   assign killed_WB = prev_killed_WB || kill_WB;
+   
    always @(*) begin
       ex_code_WB = prev_ex_code_WB;
       if (!had_ex_WB) begin
@@ -382,17 +387,17 @@
    assign exception_WB = ex_WB;
    assign exception_code_WB = ex_code_WB;
    assign wr_reg_WB = wr_reg_unkilled_WB && !kill_WB;
-   assign retire_WB = !kill_WB;
+   assign retire_WB = !(kill_WB || killed_WB);
    
    // Hazard logic
    
    assign raw_rs1 = wr_reg_WB && (rs1_addr == reg_to_wr_WB)
      && (rs1_addr != 0) && uses_rs1;
-   assign bypass_rs1 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs1;
+   assign bypass_rs1 = (wb_src_sel_WB != `WB_SRC_MEM) && raw_rs1;
    
    assign raw_rs2 = wr_reg_WB && (rs2_addr == reg_to_wr_WB)
      && (rs2_addr != 0) && uses_rs2;
-   assign bypass_rs2 = (wb_src_sel_WB == `WB_SRC_ALU) && raw_rs2;
+   assign bypass_rs2 = (wb_src_sel_WB != `WB_SRC_MEM) && raw_rs2;
    
    assign load_use = (wb_src_sel_WB == `WB_SRC_MEM) && (raw_rs1 || raw_rs2);
    
