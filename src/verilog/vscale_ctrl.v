@@ -301,8 +301,8 @@
       endcase // case (opcode)
    end // always @ (*)
 
-   assign add_or_sub = ((opcode == `RV32_OP) && (funct7[4])) ? `ALU_OP_SUB : `ALU_OP_ADD;
-   assign srl_or_sra = (funct7[4]) ? `ALU_OP_SRA : `ALU_OP_SRL;
+   assign add_or_sub = ((opcode == `RV32_OP) && (funct7[5])) ? `ALU_OP_SUB : `ALU_OP_ADD;
+   assign srl_or_sra = (funct7[5]) ? `ALU_OP_SRA : `ALU_OP_SRL;
    
    always @(*) begin
       case (funct3)

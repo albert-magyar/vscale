@@ -23,7 +23,7 @@ module vscale_alu(
         `ALU_OP_SEQ : out = {31'b0, in1 == in2};
         `ALU_OP_SNE : out = {31'b0, in1 != in2};
         `ALU_OP_SUB : out = in1 - in2;
-        `ALU_OP_SRA : out = in1 >>> shamt;
+        `ALU_OP_SRA : out = $signed(in1) >>> shamt;
         `ALU_OP_SLT : out = {31'b0, $signed(in1) < $signed(in2)};
         `ALU_OP_SGE : out = {31'b0, $signed(in1) >= $signed(in2)};
         `ALU_OP_SLTU : out = {31'b0, in1 < in2};
