@@ -134,7 +134,7 @@
 
    assign kill_DX = stall_DX || ex_DX || ex_WB;
    assign stall_DX = stall_WB || load_use || (fence_i && store_in_WB);
-   assign new_ex_DX = ebreak || ecall;
+   assign new_ex_DX = ebreak || ecall || illegal_instruction || illegal_csr_access;
    assign ex_DX = had_ex_DX || ((new_ex_DX) && !stall_DX); // TODO: add causes
    assign killed_DX = prev_killed_DX || kill_DX;
    
@@ -231,13 +231,13 @@
 	`RV32_MISC_MEM : begin
 	   case (funct3)
 	     `RV32_FUNCT3_FENCE : begin
-		if ((inst_DX[31:20] == 0) && (rs1_addr == 0) && (reg_to_wr_DX != 0))
+		if ((inst_DX[31:28] == 0) && (rs1_addr == 0) && (reg_to_wr_DX == 0))
 		  ; // most fences are no-ops
 		else
 		  illegal_instruction = 1'b1;
 	     end
 	     `RV32_FUNCT3_FENCE_I : begin
-		if ((inst_DX[31:20] == 0) && (rs1_addr == 0) && (reg_to_wr_DX != 0))
+		if ((inst_DX[31:20] == 0) && (rs1_addr == 0) && (reg_to_wr_DX == 0))
 		  fence_i = 1'b1;
 		else
 		  illegal_instruction = 1'b1;
