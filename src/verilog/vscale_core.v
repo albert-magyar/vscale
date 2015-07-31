@@ -28,8 +28,42 @@ module vscale_core(
 		   input 			htif_pcr_resp_ready,
 		   output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
                    );
+
+   function [31:0] store_data;
+      input [`XPR_LEN-1:0] 			addr;
+      input [`XPR_LEN-1:0] 			data;
+      input [2:0] 				mem_type;
+      begin
+	 case (mem_type)
+	   `MEM_TYPE_SB : store_data = {4{data[7:0]}};
+	   `MEM_TYPE_SH : store_data = {2{data[15:0]}};
+	   default : store_data = data;
+	 endcase // case (mem_type)
+      end
+   endfunction // case
+
+   function [31:0] load_data;
+      input [`XPR_LEN-1:0] 			addr;
+      input [`XPR_LEN-1:0] 			data;
+      input [2:0] 				mem_type;
+      reg [31:0] 				shifted_data;
+      reg [31:0] 				b_extend;
+      reg [31:0] 				h_extend;
+      begin
+	 shifted_data = data >> {addr[1:0],3'b0};
+	 b_extend = {{24{shifted_data[7]}},8'b0};
+	 h_extend = {{16{shifted_data[15]}},16'b0};
+	 case (mem_type)
+	   `MEM_TYPE_LB : load_data = (shifted_data & 32'hff) | b_extend;
+	   `MEM_TYPE_LH : load_data = (shifted_data & 32'hffff) | h_extend;
+	   `MEM_TYPE_LBU : load_data = (shifted_data & 32'hff);
+	   `MEM_TYPE_LHU : load_data = (shifted_data & 32'hffff);
+	   default : load_data = shifted_data;
+	 endcase // case (mem_type)
+      end
+   endfunction // case
    
-   wire [`PC_SRC_SEL_WIDTH-1:0]  PC_src_sel;   
+   wire [`PC_SRC_SEL_WIDTH-1:0] 		PC_src_sel;   
    wire [`XPR_LEN-1:0]           PC_PIF;
    
    
@@ -61,7 +95,7 @@ module vscale_core(
    wire                          cmp_true;
    wire                          bypass_rs1;
    wire                          bypass_rs2;
-   
+   wire [`MEM_TYPE_WIDTH-1:0] 	 dmem_type;
    
    reg [`XPR_LEN-1:0]            PC_WB;
    reg [`XPR_LEN-1:0]            alu_out_WB;
@@ -75,7 +109,7 @@ module vscale_core(
    wire [`REG_ADDR_WIDTH-1:0]    reg_to_wr_WB;
    wire                          wr_reg_WB;
    wire [`WB_SRC_SEL_WIDTH-1:0]  wb_src_sel_WB;   
-   
+   reg [`MEM_TYPE_WIDTH-1:0] 	 dmem_type_WB; 	 
 
    // CSR management
    wire [`CSR_ADDR_WIDTH-1:0] 	 csr_addr;
@@ -110,7 +144,8 @@ module vscale_core(
                     .alu_op(alu_op),
                     .dmem_en(dmem_en),
                     .dmem_wen(dmem_wen),
-                    .dmem_size(dmem_size),
+		    .dmem_size(dmem_size),
+                    .dmem_type(dmem_type),
                     .wr_reg_WB(wr_reg_WB),
                     .reg_to_wr_WB(reg_to_wr_WB),
                     .wb_src_sel_WB(wb_src_sel_WB),
@@ -227,6 +262,7 @@ module vscale_core(
          store_data_WB <= rs2_data_bypassed;
          alu_out_WB <= alu_out;
          csr_rdata_WB <= csr_rdata;
+	 dmem_type_WB <= dmem_type;
       end
    end
 
@@ -236,14 +272,14 @@ module vscale_core(
    always @(*) begin
       case (wb_src_sel_WB)
         `WB_SRC_ALU : wb_data_WB = bypass_data_WB;
-        `WB_SRC_MEM : wb_data_WB = dmem_rdata;
+        `WB_SRC_MEM : wb_data_WB = load_data(alu_out_WB,dmem_rdata,dmem_type_WB);
         `WB_SRC_CSR : wb_data_WB = bypass_data_WB;
 	default : wb_data_WB = bypass_data_WB;
       endcase
    end
    
    
-   assign dmem_wdata_delayed = store_data_WB;
+   assign dmem_wdata_delayed = store_data(alu_out_WB,store_data_WB,dmem_type_WB);
 
 
    // CSR

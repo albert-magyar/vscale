@@ -23,6 +23,7 @@
 		    output wire 		       dmem_en,
 		    output wire 		       dmem_wen,
 		    output wire [2:0] 		       dmem_size,
+		    output wire [`MEM_TYPE_WIDTH-1:0]  dmem_type,
 		    output wire 		       eret,
 		    output reg [`CSR_CMD_WIDTH-1:0]    csr_cmd,
 		    output reg 			       csr_imm_sel,
@@ -165,7 +166,8 @@
     statement after initially being zero.
     */
    
-   assign dmem_size = funct3;
+   assign dmem_size = {1'b0,funct3[1:0]};
+   assign dmem_type = funct3;
    
    always @(*) begin
       illegal_instruction = 1'b0;
