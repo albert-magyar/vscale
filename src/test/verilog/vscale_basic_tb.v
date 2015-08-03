@@ -51,7 +51,6 @@ module vscale_basic_tb();
 
    
    always @(posedge clk) begin
-      $fdisplay(stderr,"Running cycle %d", trace_count);
       trace_count = trace_count + 1;
       if (max_cycles > 0 && trace_count > max_cycles) begin
 	reason = "timeout";
