@@ -1,4 +1,4 @@
 *~
 *#
-src/verilog/csrc
-src/verilog/simv.daidir
+sim/*
+output/*

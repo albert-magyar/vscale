@@ -2,15 +2,15 @@
 `include "vscale_csr_addr_map.vh"
 
 module vscale_top(
-		  input                        clk,
-		  input                        reset,
-                  input                        htif_pcr_req_valid,
-                  output                       htif_pcr_req_ready,
-                  input                        htif_pcr_req_rw,
+		  input 		       clk,
+		  input 		       reset,
+                  input 		       htif_pcr_req_valid,
+                  output 		       htif_pcr_req_ready,
+                  input 		       htif_pcr_req_rw,
                   input [`CSR_ADDR_WIDTH-1:0]  htif_pcr_req_addr,
                   input [`HTIF_PCR_WIDTH-1:0]  htif_pcr_req_data,
-                  output                       htif_pcr_resp_valid,
-                  input                        htif_pcr_resp_ready,
+                  output 		       htif_pcr_resp_valid,
+                  input 		       htif_pcr_resp_ready,
                   output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
 		  );
 
@@ -47,7 +47,6 @@ module vscale_top(
    
    vscale_hasti_wrapper vscale(
 			       .clk(clk),
-			       .reset(reset),
 			       .imem_haddr(imem_haddr),
 			       .imem_hwrite(imem_hwrite),
 			       .imem_hsize(imem_hsize),
@@ -71,6 +70,7 @@ module vscale_top(
 			       .dmem_hready(dmem_hready),
 			       .dmem_hresp(dmem_hresp),
 			       .htif_reset(htif_reset),
+			       .htif_id(1'b0),
 			       .htif_pcr_req_valid(htif_pcr_req_valid),
 			       .htif_pcr_req_ready(htif_pcr_req_ready),
 			       .htif_pcr_req_rw(htif_pcr_req_rw),
@@ -78,7 +78,14 @@ module vscale_top(
 			       .htif_pcr_req_data(htif_pcr_req_data),
 			       .htif_pcr_resp_valid(htif_pcr_resp_valid),
 			       .htif_pcr_resp_ready(htif_pcr_resp_ready),
-			       .htif_pcr_resp_data(htif_pcr_resp_data)
+			       .htif_pcr_resp_data(htif_pcr_resp_data),
+			       .htif_ipi_req_ready(1'b0),
+			       .htif_ipi_req_valid(),
+			       .htif_ipi_req_data(),
+			       .htif_ipi_resp_ready(),
+			       .htif_ipi_resp_valid(1'b0),
+			       .htif_ipi_resp_data(1'b0),
+			       .htif_debug_stats_pcr()
 			       );
    
    vscale_hasti_sram imem(
