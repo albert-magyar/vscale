@@ -2,7 +2,7 @@ V_SRC_DIR = src/main/verilog
 
 V_TEST_DIR = src/test/verilog
 
-CXX_TEST_DIR = src/main/cxx
+CXX_TEST_DIR = src/test/cxx
 
 SIM_DIR = sim
 
@@ -12,7 +12,12 @@ OUT_DIR = output
 
 VERILATOR = verilator
 
-VERILATOR_OPTS = -Wall -Wno-WIDTH -Wno-UNUSED --cc
+VERILATOR_OPTS = -Wall -Wno-WIDTH -Wno-UNUSED --cc \
+	+incdir+$(V_SRC_DIR) \
+	--Mdir $(SIM_DIR) \
+	-Wno-fatal
+
+VERILATOR_MAKE_OPTS = OPT_FAST="-O3"
 
 VCS = vcs -full64
 
@@ -28,9 +33,13 @@ VCS_BASIC_TB = $(V_TEST_DIR)/vscale_basic_tb.v
 
 VCS_HEX_TB = $(V_TEST_DIR)/vscale_hex_tb.v
 
-VERILATOR_CPP_TB = $(CXX_TEST_DIR)/vscale_main.cpp
+VERILATOR_CPP_TB = $(CXX_TEST_DIR)/vscale_benchmark.cpp
 
-VERILATOR_TOP = $(V_TEST_DIR)/vscale_verilator_top.v
+VERILATOR_TOP = $(V_TEST_DIR)/vscale_benchmark_top.v
+
+VERILATOR_ZSCALE_CPP_TB = $(CXX_TEST_DIR)/zscale_benchmark.cpp
+
+VERILATOR_ZSCALE_TOP = $(V_TEST_DIR)/zscale_benchmark_top.v
 
 SRCS = $(addprefix $(V_SRC_DIR)/, \
 vscale_top.v \
@@ -56,7 +65,9 @@ vscale_hasti_constants.vh \
 vscale_csr_addr_map.vh \
 )
 
-default: $(SIM_DIR)/simv $(SIM_DIR)/simv-basic
+vcs_sim: $(SIM_DIR)/simv $(SIM_DIR)/simv-basic
+
+verilator_sim: $(SIM_DIR)/Vvscale_benchmark_top $(SIM_DIR)/Vvscale_benchmark_top
 
 $(SIM_DIR)/simv: $(VCS_HEX_TB) $(SRCS) $(HDRS)
 	$(VCS) $(VCS_OPTS) -o $@ $(VCS_HEX_TB) $(SRCS)
@@ -67,9 +78,20 @@ $(OUT_DIR)/vscale-basic.vpd: $(SIM_DIR)/simv-basic $(MEM_DIR)/vscale_simple_test
 $(SIM_DIR)/simv-basic: $(VCS_BASIC_TB) $(SRCS) $(HDRS)
 	$(VCS) $(VCS_OPTS) -o $@ $(VCS_BASIC_TB) $(SRCS)
 
-compile-verilator:
-	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(SRCS) --exe $(VERILATOR_CPP_TB)
-	cd obj_dir && make -f Vvscale_verilator_top.mk Vvscale_verilator_top
+$(SIM_DIR)/Vvscale_benchmark_top: $(VERILATOR_TOP) $(SRCS) $(HDRS) $(VERILATOR_CPP_TB)
+	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(SRCS) --exe ../$(VERILATOR_CPP_TB)
+	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vvscale_benchmark_top.mk Vvscale_benchmark_top__ALL.a
+	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vvscale_benchmark_top.mk Vvscale_benchmark_top
+
+$(SIM_DIR)/Vzscale_benchmark_top: $(VERILATOR_ZSCALE_TOP) $(SRCS) $(HDRS) $(VERILATOR_ZSCALE_CPP_TB)
+	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_ZSCALE_TOP) \
+	$(V_TEST_DIR)/zscale_top.v \
+	$(V_TEST_DIR)/ZscaleTop.ZscaleConfig.v \
+	$(SRCS) --exe ../$(VERILATOR_ZSCALE_CPP_TB) \
+	--top-module zscale_benchmark_top \
+	-DSYNTHESIS
+	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vzscale_benchmark_top.mk Vzscale_benchmark_top__ALL.a
+	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vzscale_benchmark_top.mk Vzscale_benchmark_top
 
 clean:
 	rm -rf $(SIM_DIR)/*
