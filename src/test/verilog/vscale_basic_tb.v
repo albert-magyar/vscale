@@ -40,6 +40,7 @@ module vscale_basic_tb();
    always #5 clk = !clk;
 
    initial begin
+      $value$plusargs("max-cycles=%d", max_cycles);
       $value$plusargs("loadmem=%s", loadmem);
       $value$plusargs("vpdfile=%s", vpdfile);
       $readmemb(loadmem, DUT.imem.mem);

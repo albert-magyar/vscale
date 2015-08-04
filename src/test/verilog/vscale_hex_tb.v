@@ -46,7 +46,7 @@ module vscale_hex_tb();
    initial begin
       $value$plusargs("max-cycles=%d", max_cycles);
       $value$plusargs("loadmem=%s", loadmem);
-      $value$plusargs("vpd=%s", vpdfile);
+      $value$plusargs("vpdfile=%s", vpdfile);
       if (loadmem) begin	 
 	 $readmemh(loadmem, hexfile);
 	 for (i = 0; i < hexfile_words; i = i + 1) begin
@@ -58,7 +58,7 @@ module vscale_hex_tb();
       end
       $vcdplusfile(vpdfile);
       $vcdpluson();
-      $vcdplusmemon();
+      // $vcdplusmemon();
       #100 reset = 0;
    end // initial begin
 

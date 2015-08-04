@@ -20,8 +20,33 @@ module vscale_mul_div(
    reg 						    result;
    
    reg [`MUL_DIV_OP_WIDTH-1:0] 			    op;
-   reg [`XPR_LEN-1:0] 				    a;
-   reg [`XPR_LEN-1:0] 				    b;
+   reg [63:0] 					    a;
+   reg [63:0] 					    b;
+   reg [`XPR_LEN-1:0] 				    result;
+
+   assign a_geq = a >= b;
+   
+   always @(*) begin
+      case (op)
+	`DIV : begin
+	   // in1[31:0] starts in a[31:0]
+	   // in2[31:0] starts in b[31:0]
+	   next_a = a_geq ? (a - b) : a;
+	   next_b = b >> 1;
+	   update_result = a_geq;
+	   next_result = (1 << bit_pos) | result;
+	end
+	default : begin
+	   // mul
+	   // in1[31:0] starts in a[31:0]
+	   // in2[31:0] starts in b[63:32]
+	   next_a = a << 1;
+	   next_b = b >> 1;
+	   update_result = a[31];
+	   next_result = result + b;
+	end
+      endcase // case (op)
+   end // always @ (*)
    
    
 endmodule // vscale_mul_div

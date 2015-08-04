@@ -1,3 +1,5 @@
+include Makefrag
+
 V_SRC_DIR = src/main/verilog
 
 V_TEST_DIR = src/test/verilog
@@ -22,12 +24,12 @@ VERILATOR_MAKE_OPTS = OPT_FAST="-O3"
 VCS = vcs -full64
 
 VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
-	+define+DEBUG -debug_pp -noIncrComp \
+	+define+DEBUG -debug_pp \
 	+incdir+$(V_SRC_DIR) -Mdirectory=$(SIM_DIR)/csrc \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
 	-CC "-std=c++11" \
 
-SIMV_OPTS = -k $(OUT_DIR)/ucli.key
+SIMV_OPTS = -k $(OUT_DIR)/ucli.key +max-cycles=1000000 -q
 
 VCS_BASIC_TB = $(V_TEST_DIR)/vscale_basic_tb.v
 
@@ -65,9 +67,16 @@ vscale_hasti_constants.vh \
 vscale_csr_addr_map.vh \
 )
 
-vcs_sim: $(SIM_DIR)/simv $(SIM_DIR)/simv-basic
+TEST_VPD_FILES = $(addprefix $(OUT_DIR)/,$(addsuffix .vpd,$(RV32_TESTS)))
 
-verilator_sim: $(SIM_DIR)/Vvscale_benchmark_top $(SIM_DIR)/Vvscale_benchmark_top
+vcs-sim: $(SIM_DIR)/simv $(SIM_DIR)/simv-basic
+
+run-asm-tests: $(TEST_VPD_FILES)
+
+verilator-sim: $(SIM_DIR)/Vvscale_benchmark_top $(SIM_DIR)/Vvscale_benchmark_top
+
+$(OUT_DIR)/%.vpd: $(MEM_DIR)/%.hex $(SIM_DIR)/simv
+	$(SIM_DIR)/simv $(SIMV_OPTS) +max_cycles=$(MAX_CYCLES) +loadmem=$< +vpdfile=$@ && [ $$PIPESTATUS -eq 0 ]
 
 $(SIM_DIR)/simv: $(VCS_HEX_TB) $(SRCS) $(HDRS)
 	$(VCS) $(VCS_OPTS) -o $@ $(VCS_HEX_TB) $(SRCS)
@@ -96,4 +105,4 @@ $(SIM_DIR)/Vzscale_benchmark_top: $(VERILATOR_ZSCALE_TOP) $(SRCS) $(HDRS) $(VERI
 clean:
 	rm -rf $(SIM_DIR)/*
 
-.PHONY: clean compile-verilator
+.PHONY: clean run-asm-tests
