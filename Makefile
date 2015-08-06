@@ -44,7 +44,7 @@ VERILATOR_ZSCALE_CPP_TB = $(CXX_TEST_DIR)/zscale_benchmark.cpp
 VERILATOR_ZSCALE_TOP = $(V_TEST_DIR)/zscale_benchmark_top.v
 
 SRCS = $(addprefix $(V_SRC_DIR)/, \
-vscale_top.v \
+vscale_sim_top.v \
 vscale_PC_mux.v \
 vscale_ctrl.v \
 vscale_regfile.v \
@@ -54,6 +54,7 @@ vscale_alu.v \
 vscale_src_b_mux.v \
 vscale_core.v \
 vscale_hasti_sram.v \
+vscale_dp_hasti_sram.v \
 vscale_hasti_wrapper.v \
 vscale_csr_file.v \
 vscale_imm_gen.v \
@@ -103,6 +104,6 @@ $(SIM_DIR)/Vzscale_benchmark_top: $(VERILATOR_ZSCALE_TOP) $(SRCS) $(HDRS) $(VERI
 	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vzscale_benchmark_top.mk Vzscale_benchmark_top
 
 clean:
-	rm -rf $(SIM_DIR)/*
+	rm -rf $(SIM_DIR)/* $(OUT_DIR)/*
 
 .PHONY: clean run-asm-tests

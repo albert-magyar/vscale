@@ -20,18 +20,18 @@ module vscale_hex_tb();
 
    reg [127:0] 		      hexfile [hexfile_words-1:0];
    
-   vscale_top DUT(
-		  .clk(clk),
-		  .reset(reset),
-                  .htif_pcr_req_valid(1'b1),
-                  .htif_pcr_req_ready(),
-                  .htif_pcr_req_rw(1'b0),
-                  .htif_pcr_req_addr(`CSR_ADDR_TO_HOST),
-                  .htif_pcr_req_data(`HTIF_PCR_WIDTH'b0),
-                  .htif_pcr_resp_valid(htif_pcr_resp_valid),
-                  .htif_pcr_resp_ready(1'b1),
-                  .htif_pcr_resp_data(htif_pcr_resp_data)
-		  );
+   vscale_sim_top DUT(
+		      .clk(clk),
+		      .reset(reset),
+                      .htif_pcr_req_valid(1'b1),
+                      .htif_pcr_req_ready(),
+                      .htif_pcr_req_rw(1'b0),
+                      .htif_pcr_req_addr(`CSR_ADDR_TO_HOST),
+                      .htif_pcr_req_data(`HTIF_PCR_WIDTH'b0),
+                      .htif_pcr_resp_valid(htif_pcr_resp_valid),
+                      .htif_pcr_resp_ready(1'b1),
+                      .htif_pcr_resp_data(htif_pcr_resp_data)
+		      );
 
    initial begin
       clk = 0;
@@ -51,8 +51,7 @@ module vscale_hex_tb();
 	 $readmemh(loadmem, hexfile);
 	 for (i = 0; i < hexfile_words; i = i + 1) begin
 	    for (j = 0; j < 4; j = j + 1) begin
-	       DUT.imem.mem[4*i+j] = hexfile[i][32*j+:32];
-	       DUT.dmem.mem[4*i+j] = hexfile[i][32*j+:32];
+	       DUT.mem.mem[4*i+j] = hexfile[i][32*j+:32];
 	    end
 	 end
       end
@@ -88,5 +87,5 @@ module vscale_hex_tb();
       end
    end
    
-endmodule // vscale_top_tb
+endmodule // vscale_hex_tb
 

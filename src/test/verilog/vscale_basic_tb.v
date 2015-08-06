@@ -19,18 +19,18 @@ module vscale_basic_tb();
    integer 		      stderr = 32'h80000002;
    
    
-   vscale_top DUT(
-		  .clk(clk),
-		  .reset(reset),
-                  .htif_pcr_req_valid(1'b1),
-                  .htif_pcr_req_ready(),
-                  .htif_pcr_req_rw(1'b0),
-                  .htif_pcr_req_addr(`CSR_ADDR_TO_HOST),
-                  .htif_pcr_req_data(`HTIF_PCR_WIDTH'b0),
-                  .htif_pcr_resp_valid(htif_pcr_resp_valid),
-                  .htif_pcr_resp_ready(1'b1),
-                  .htif_pcr_resp_data(htif_pcr_resp_data)
-		  );
+   vscale_sim_top DUT(
+		      .clk(clk),
+		      .reset(reset),
+                      .htif_pcr_req_valid(1'b1),
+                      .htif_pcr_req_ready(),
+                      .htif_pcr_req_rw(1'b0),
+                      .htif_pcr_req_addr(`CSR_ADDR_TO_HOST),
+                      .htif_pcr_req_data(`HTIF_PCR_WIDTH'b0),
+                      .htif_pcr_resp_valid(htif_pcr_resp_valid),
+                      .htif_pcr_resp_ready(1'b1),
+                      .htif_pcr_resp_data(htif_pcr_resp_data)
+		      );
 
    initial begin
       clk = 0;
@@ -43,7 +43,7 @@ module vscale_basic_tb();
       $value$plusargs("max-cycles=%d", max_cycles);
       $value$plusargs("loadmem=%s", loadmem);
       $value$plusargs("vpdfile=%s", vpdfile);
-      $readmemb(loadmem, DUT.imem.mem);
+      $readmemb(loadmem, DUT.mem.mem);
       $vcdplusfile(vpdfile);
       $vcdpluson();
       $vcdplusmemon();
@@ -73,5 +73,5 @@ module vscale_basic_tb();
       end
    end
    
-endmodule // vscale_top_tb
+endmodule // vscale_basic_tb
 

@@ -120,4 +120,4 @@ module zscale_top(
 			  .hresp(dmem_hresp)    
 			  );
       
-endmodule // vscale_top
+endmodule // zscale_top

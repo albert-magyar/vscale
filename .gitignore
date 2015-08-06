@@ -2,3 +2,6 @@
 *#
 sim/*
 output/*
+*DVEfiles*
+*.vcd
+*.vpd
