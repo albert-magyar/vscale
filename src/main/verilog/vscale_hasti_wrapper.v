@@ -57,6 +57,9 @@ module vscale_hasti_wrapper(
    wire [`HASTI_BUS_WIDTH-1:0]                              dmem_rdata;
    wire                                                     dmem_badmem_e;
 
+   assign htif_ipi_req_valid = 1'b0;
+   assign htif_ipi_req_data = 1'b0;
+   assign htif_ipi_resp_ready = 1'b1;
    assign htif_debug_stats_pcr = 1'b0;
 
    vscale_hasti_bridge imem_bridge(

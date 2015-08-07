@@ -105,6 +105,7 @@ module vscale_core(
    wire                                         kill_WB;
    wire                                         stall_WB;
    wire [`XPR_LEN-1:0]                          bypass_data_WB;
+   wire [`XPR_LEN-1:0]                          load_data_WB;
    reg [`XPR_LEN-1:0]                           wb_data_WB;
    wire [`REG_ADDR_WIDTH-1:0]                   reg_to_wr_WB;
    wire                                         wr_reg_WB;
@@ -269,10 +270,12 @@ module vscale_core(
 
    assign bypass_data_WB = (wb_src_sel_WB == `WB_SRC_CSR) ? csr_rdata_WB : alu_out_WB;
 
+   assign load_data_WB = load_data(alu_out_WB,dmem_rdata,dmem_type_WB);
+
    always @(*) begin
       case (wb_src_sel_WB)
         `WB_SRC_ALU : wb_data_WB = bypass_data_WB;
-        `WB_SRC_MEM : wb_data_WB = load_data(alu_out_WB,dmem_rdata,dmem_type_WB);
+        `WB_SRC_MEM : wb_data_WB = load_data_WB;
         `WB_SRC_CSR : wb_data_WB = bypass_data_WB;
         default : wb_data_WB = bypass_data_WB;
       endcase

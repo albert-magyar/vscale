@@ -23,7 +23,7 @@ VERILATOR_MAKE_OPTS = OPT_FAST="-O3"
 
 VCS = vcs -full64
 
-VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
+VCS_OPTS = -PP -notice -line +lint=all,noVCDE,noUI +v2k -timescale=1ns/10ps -quiet \
 	+define+DEBUG -debug_pp \
 	+incdir+$(V_SRC_DIR) -Mdirectory=$(SIM_DIR)/csrc \
 	+vc+list -CC "-I$(VCS_HOME)/include" \
