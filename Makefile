@@ -31,34 +31,30 @@ VCS_OPTS = -PP -notice -line +lint=all,noVCDE +v2k -timescale=1ns/10ps -quiet \
 
 SIMV_OPTS = -k $(OUT_DIR)/ucli.key +max-cycles=1000000 -q
 
-VCS_BASIC_TB = $(V_TEST_DIR)/vscale_basic_tb.v
-
-VCS_HEX_TB = $(V_TEST_DIR)/vscale_hex_tb.v
-
 VERILATOR_CPP_TB = $(CXX_TEST_DIR)/vscale_benchmark.cpp
 
 VERILATOR_TOP = $(V_TEST_DIR)/vscale_benchmark_top.v
 
-VERILATOR_ZSCALE_CPP_TB = $(CXX_TEST_DIR)/zscale_benchmark.cpp
-
-VERILATOR_ZSCALE_TOP = $(V_TEST_DIR)/zscale_benchmark_top.v
-
-SRCS = $(addprefix $(V_SRC_DIR)/, \
-vscale_sim_top.v \
-vscale_PC_mux.v \
+DESIGN_SRCS = $(addprefix $(V_SRC_DIR)/, \
+vscale_hasti_wrapper.v \
+vscale_hasti_bridge.v \
+vscale_core.v \
 vscale_ctrl.v \
 vscale_regfile.v \
-vscale_hasti_bridge.v \
 vscale_src_a_mux.v \
-vscale_alu.v \
 vscale_src_b_mux.v \
-vscale_core.v \
-vscale_hasti_sram.v \
-vscale_dp_hasti_sram.v \
-vscale_hasti_wrapper.v \
-vscale_csr_file.v \
 vscale_imm_gen.v \
+vscale_alu.v \
+vscale_csr_file.v \
+vscale_PC_mux.v \
 )
+
+SIM_SRCS = $(addprefix $(V_TEST_DIR)/, \
+vscale_sim_top.v \
+vscale_dp_hasti_sram.v \
+)
+
+VCS_TOP = $(V_TEST_DIR)/vscale_hex_tb.v
 
 HDRS = $(addprefix $(V_SRC_DIR)/, \
 vscale_ctrl_constants.vh \
@@ -70,38 +66,22 @@ vscale_csr_addr_map.vh \
 
 TEST_VPD_FILES = $(addprefix $(OUT_DIR)/,$(addsuffix .vpd,$(RV32_TESTS)))
 
-vcs-sim: $(SIM_DIR)/simv $(SIM_DIR)/simv-basic
+default: $(SIM_DIR)/simv
 
 run-asm-tests: $(TEST_VPD_FILES)
 
-verilator-sim: $(SIM_DIR)/Vvscale_benchmark_top $(SIM_DIR)/Vvscale_benchmark_top
+verilator-sim: $(SIM_DIR)/Vvscale_benchmark_top
 
 $(OUT_DIR)/%.vpd: $(MEM_DIR)/%.hex $(SIM_DIR)/simv
 	$(SIM_DIR)/simv $(SIMV_OPTS) +max_cycles=$(MAX_CYCLES) +loadmem=$< +vpdfile=$@ && [ $$PIPESTATUS -eq 0 ]
 
-$(SIM_DIR)/simv: $(VCS_HEX_TB) $(SRCS) $(HDRS)
-	$(VCS) $(VCS_OPTS) -o $@ $(VCS_HEX_TB) $(SRCS)
+$(SIM_DIR)/simv: $(VCS_TOP) $(SIM_SRCS) $(DESIGN_SRCS) $(HDRS)
+	$(VCS) $(VCS_OPTS) -o $@ $(VCS_TOP) $(SIM_SRCS) $(DESIGN_SRCS)
 
-$(OUT_DIR)/vscale-basic.vpd: $(SIM_DIR)/simv-basic $(MEM_DIR)/vscale_simple_test.bin
-	$(SIM_DIR)/simv-basic $(SIMV_OPTS) +loadmem=$(MEM_DIR)/vscale_simple_test.bin +vpdfile=$@
-
-$(SIM_DIR)/simv-basic: $(VCS_BASIC_TB) $(SRCS) $(HDRS)
-	$(VCS) $(VCS_OPTS) -o $@ $(VCS_BASIC_TB) $(SRCS)
-
-$(SIM_DIR)/Vvscale_benchmark_top: $(VERILATOR_TOP) $(SRCS) $(HDRS) $(VERILATOR_CPP_TB)
-	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(SRCS) --exe ../$(VERILATOR_CPP_TB)
+$(SIM_DIR)/Vvscale_benchmark_top: $(VERILATOR_TOP) $(DESIGN_SRCS) $(HDRS) $(VERILATOR_CPP_TB)
+	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_TOP) $(DESIGN_SRCS) --exe ../$(VERILATOR_CPP_TB)
 	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vvscale_benchmark_top.mk Vvscale_benchmark_top__ALL.a
 	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vvscale_benchmark_top.mk Vvscale_benchmark_top
-
-$(SIM_DIR)/Vzscale_benchmark_top: $(VERILATOR_ZSCALE_TOP) $(SRCS) $(HDRS) $(VERILATOR_ZSCALE_CPP_TB)
-	$(VERILATOR) $(VERILATOR_OPTS) $(VERILATOR_ZSCALE_TOP) \
-	$(V_TEST_DIR)/zscale_top.v \
-	$(V_TEST_DIR)/ZscaleTop.ZscaleConfig.v \
-	$(SRCS) --exe ../$(VERILATOR_ZSCALE_CPP_TB) \
-	--top-module zscale_benchmark_top \
-	-DSYNTHESIS
-	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vzscale_benchmark_top.mk Vzscale_benchmark_top__ALL.a
-	cd sim; make $(VERILATOR_MAKE_OPTS) -f Vzscale_benchmark_top.mk Vzscale_benchmark_top
 
 clean:
 	rm -rf $(SIM_DIR)/* $(OUT_DIR)/*
