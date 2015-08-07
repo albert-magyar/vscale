@@ -2,6 +2,8 @@
 `define INST_WIDTH     32
 `define REG_ADDR_WIDTH  5
 `define XPR_LEN        32
+`define DOUBLE_XPR_LEN 64
+`define LOG2_XPR_LEN    5
 `define SHAMT_WIDTH     5
 
 `define RV_NOP `INST_WIDTH'b0010011
@@ -82,3 +84,15 @@
 `define RV32_FUNCT12_ECALL  12'b000000000000
 `define RV32_FUNCT12_EBREAK 12'b000000000001
 `define RV32_FUNCT12_ERET   12'b000100000000
+
+// RV32M encodings
+`define RV32_FUNCT7_MUL_DIV 7'd1
+
+`define RV32_FUNCT3_MUL    3'd0
+`define RV32_FUNCT3_MULH   3'd1
+`define RV32_FUNCT3_MULHSU 3'd2
+`define RV32_FUNCT3_MULHU  3'd3
+`define RV32_FUNCT3_DIV    3'd4
+`define RV32_FUNCT3_DIVU   3'd5
+`define RV32_FUNCT3_REM    3'd6
+`define RV32_FUNCT3_REMU   3'd7

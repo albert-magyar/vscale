@@ -45,6 +45,7 @@ vscale_src_a_mux.v \
 vscale_src_b_mux.v \
 vscale_imm_gen.v \
 vscale_alu.v \
+vscale_mul_div.v \
 vscale_csr_file.v \
 vscale_PC_mux.v \
 )
@@ -60,6 +61,7 @@ HDRS = $(addprefix $(V_SRC_DIR)/, \
 vscale_ctrl_constants.vh \
 rv32_opcodes.vh \
 vscale_alu_ops.vh \
+vscale_md_constants.vh \
 vscale_hasti_constants.vh \
 vscale_csr_addr_map.vh \
 )

@@ -2,6 +2,7 @@
 `include "vscale_alu_ops.vh"
 `include "rv32_opcodes.vh"
 `include "vscale_csr_addr_map.vh"
+`include "vscale_md_constants.vh"
 
 module vscale_core(
                    input                        clk,
@@ -97,6 +98,15 @@ module vscale_core(
    wire                                         bypass_rs2;
    wire [`MEM_TYPE_WIDTH-1:0]                   dmem_type;
 
+   wire                                         md_req_valid;
+   wire                                         md_req_ready;
+   wire                                         md_req_in_1_signed;
+   wire                                         md_req_in_2_signed;
+   wire [`MD_OUT_SEL_WIDTH-1:0]                 md_req_out_sel;
+   wire [`MD_OP_WIDTH-1:0]                      md_req_op;
+   wire                                         md_resp_valid;
+   wire [`XPR_LEN-1:0]                          md_resp_result;
+
    reg [`XPR_LEN-1:0]                           PC_WB;
    reg [`XPR_LEN-1:0]                           alu_out_WB;
    reg [`XPR_LEN-1:0]                           csr_rdata_WB;
@@ -104,7 +114,7 @@ module vscale_core(
 
    wire                                         kill_WB;
    wire                                         stall_WB;
-   wire [`XPR_LEN-1:0]                          bypass_data_WB;
+   reg [`XPR_LEN-1:0]                           bypass_data_WB;
    wire [`XPR_LEN-1:0]                          load_data_WB;
    reg [`XPR_LEN-1:0]                           wb_data_WB;
    wire [`REG_ADDR_WIDTH-1:0]                   reg_to_wr_WB;
@@ -147,6 +157,13 @@ module vscale_core(
                     .dmem_wen(dmem_wen),
                     .dmem_size(dmem_size),
                     .dmem_type(dmem_type),
+                    .md_req_valid(md_req_valid),
+                    .md_req_ready(md_req_ready),
+                    .md_req_op(md_req_op),
+                    .md_req_in_1_signed(md_req_in_1_signed),
+                    .md_req_in_2_signed(md_req_in_2_signed),
+                    .md_req_out_sel(md_req_out_sel),
+                    .md_resp_valid(md_resp_valid),
                     .wr_reg_WB(wr_reg_WB),
                     .reg_to_wr_WB(reg_to_wr_WB),
                     .wb_src_sel_WB(wb_src_sel_WB),
@@ -246,6 +263,22 @@ module vscale_core(
                   .out(alu_out)
                   );
 
+   vscale_mul_div md(
+                     .clk(clk),
+                     .reset(reset),
+                     .req_valid(md_req_valid),
+                     .req_ready(md_req_ready),
+                     .req_in_1_signed(md_req_in_1_signed),
+                     .req_in_2_signed(md_req_in_2_signed),
+                     .req_out_sel(md_req_out_sel),
+                     .req_op(md_req_op),
+                     .req_in_1(rs1_data_bypassed),
+                     .req_in_2(rs2_data_bypassed),
+                     .resp_valid(md_resp_valid),
+                     .resp_result(md_resp_result)
+                     );
+
+
    assign cmp_true = alu_out[0];
 
 
@@ -268,7 +301,13 @@ module vscale_core(
    end
 
 
-   assign bypass_data_WB = (wb_src_sel_WB == `WB_SRC_CSR) ? csr_rdata_WB : alu_out_WB;
+   always @(*) begin
+      case (wb_src_sel_WB)
+        `WB_SRC_CSR : bypass_data_WB = csr_rdata_WB;
+        `WB_SRC_MD : bypass_data_WB = md_resp_result;
+        default : bypass_data_WB = alu_out_WB;
+      endcase // case (wb_src_sel_WB)
+   end
 
    assign load_data_WB = load_data(alu_out_WB,dmem_rdata,dmem_type_WB);
 
@@ -277,6 +316,7 @@ module vscale_core(
         `WB_SRC_ALU : wb_data_WB = bypass_data_WB;
         `WB_SRC_MEM : wb_data_WB = load_data_WB;
         `WB_SRC_CSR : wb_data_WB = bypass_data_WB;
+        `WB_SRC_MD : wb_data_WB = bypass_data_WB;
         default : wb_data_WB = bypass_data_WB;
       endcase
    end
