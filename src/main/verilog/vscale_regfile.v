@@ -30,7 +30,7 @@ module vscale_regfile(
    integer i;
    initial begin
       for (i = 0; i < 32; i = i + 1) begin
-	 data[i] = 0;
+	 data[i] = $random;
       end
    end
 `endif

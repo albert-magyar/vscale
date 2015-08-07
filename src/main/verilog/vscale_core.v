@@ -253,9 +253,9 @@ module vscale_core(
    always @(posedge clk) begin
       if (reset) begin
 	 `ifndef SYNTHESIS
-	 PC_WB <= 0;
-	 store_data_WB <= 0;
-	 alu_out_WB <= 0;
+	 PC_WB <= $random;
+	 store_data_WB <= $random;
+	 alu_out_WB <= $random;
 	 `endif
       end else if (~stall_WB) begin
          PC_WB <= PC_DX;
