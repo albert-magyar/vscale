@@ -2,61 +2,62 @@
 `include "vscale_csr_addr_map.vh"
 
 module vscale_hasti_wrapper(
-                            input 			 clk,
-                            output [31:0] 		 imem_haddr,
-                            output 			 imem_hwrite,
-                            output [2:0] 		 imem_hsize,
-                            output [2:0] 		 imem_hburst,
-                            output 			 imem_hmastlock,
-                            output [3:0] 		 imem_hprot,
-                            output [1:0] 		 imem_htrans,
-                            output [31:0] 		 imem_hwdata,
-                            input [31:0] 		 imem_hrdata,
-                            input 			 imem_hready,
-                            input 			 imem_hresp,
-                            output [31:0] 		 dmem_haddr,
-                            output 			 dmem_hwrite,
-                            output [2:0] 		 dmem_hsize,
-                            output [2:0] 		 dmem_hburst,
-                            output 			 dmem_hmastlock,
-                            output [3:0] 		 dmem_hprot,
-                            output [1:0] 		 dmem_htrans,
-                            output [31:0] 		 dmem_hwdata,
-                            input [31:0] 		 dmem_hrdata,
-                            input 			 dmem_hready,
-                            input 			 dmem_hresp,
-			    input 			 htif_reset,
-			    input 			 htif_id,
-			    input 			 htif_pcr_req_valid,
-			    output 			 htif_pcr_req_ready,
-			    input 			 htif_pcr_req_rw,
-			    input [`CSR_ADDR_WIDTH-1:0]  htif_pcr_req_addr,
-			    input [`HTIF_PCR_WIDTH-1:0]  htif_pcr_req_data,
-			    output 			 htif_pcr_resp_valid,
-			    input 			 htif_pcr_resp_ready,
-			    output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data,
-			    input 			 htif_ipi_req_ready,
-			    output 			 htif_ipi_req_valid,
-			    output 			 htif_ipi_req_data,
-			    output 			 htif_ipi_resp_ready,
-			    input 			 htif_ipi_resp_valid,
-			    input 			 htif_ipi_resp_data,
-			    output 			 htif_debug_stats_pcr
+                            input 			    clk,
+                            output [`HASTI_ADDR_WIDTH-1:0]  imem_haddr,
+                            output 			    imem_hwrite,
+                            output [`HASTI_SIZE_WIDTH-1:0]  imem_hsize,
+                            output [`HASTI_BURST_WIDTH-1:0] imem_hburst,
+                            output 			    imem_hmastlock,
+                            output [`HASTI_PROT_WIDTH-1:0]  imem_hprot,
+                            output [`HASTI_TRANS_WIDTH-1:0] imem_htrans,
+                            output [`HASTI_BUS_WIDTH-1:0]   imem_hwdata,
+                            input [`HASTI_BUS_WIDTH-1:0]    imem_hrdata,
+                            input 			    imem_hready,
+                            input [`HASTI_RESP_WIDTH-1:0]   imem_hresp,
+                            output [`HASTI_ADDR_WIDTH-1:0]  dmem_haddr,
+                            output 			    dmem_hwrite,
+                            output [`HASTI_SIZE_WIDTH-1:0]  dmem_hsize,
+                            output [`HASTI_BURST_WIDTH-1:0] dmem_hburst,
+                            output 			    dmem_hmastlock,
+                            output [`HASTI_PROT_WIDTH-1:0]  dmem_hprot,
+                            output [`HASTI_TRANS_WIDTH-1:0] dmem_htrans,
+                            output [`HASTI_BUS_WIDTH-1:0]   dmem_hwdata,
+                            input [`HASTI_BUS_WIDTH-1:0]    dmem_hrdata,
+                            input 			    dmem_hready,
+                            input [`HASTI_RESP_WIDTH-1:0]   dmem_hresp,
+			    input 			    htif_reset,
+			    input 			    htif_id,
+			    input 			    htif_pcr_req_valid,
+			    output 			    htif_pcr_req_ready,
+			    input 			    htif_pcr_req_rw,
+			    input [`CSR_ADDR_WIDTH-1:0]     htif_pcr_req_addr,
+			    input [`HTIF_PCR_WIDTH-1:0]     htif_pcr_req_data,
+			    output 			    htif_pcr_resp_valid,
+			    input 			    htif_pcr_resp_ready,
+			    output [`HTIF_PCR_WIDTH-1:0]    htif_pcr_resp_data,
+			    input 			    htif_ipi_req_ready,
+			    output 			    htif_ipi_req_valid,
+			    output 			    htif_ipi_req_data,
+			    output 			    htif_ipi_resp_ready,
+			    input 			    htif_ipi_resp_valid,
+			    input 			    htif_ipi_resp_data,
+			    output 			    htif_debug_stats_pcr
                             );
    
    wire                                   imem_wait;
-   wire [31:0]                            imem_addr;
-   wire [31:0]                            imem_rdata;
+   wire [`HASTI_ADDR_WIDTH-1:0]                            imem_addr;
+   wire [`HASTI_BUS_WIDTH-1:0]                            imem_rdata;
    wire                                   imem_badmem_e;
    wire                                   dmem_wait;
    wire                                   dmem_en;
    wire                                   dmem_wen;
-   wire [2:0]                             dmem_size;
-   wire [31:0]                            dmem_addr;
-   wire [31:0]                            dmem_wdata_delayed;
-   wire [31:0]                            dmem_rdata;
+   wire [`HASTI_SIZE_WIDTH-1:0]                             dmem_size;
+   wire [`HASTI_ADDR_WIDTH-1:0]                            dmem_addr;
+   wire [`HASTI_BUS_WIDTH-1:0]                            dmem_wdata_delayed;
+   wire [`HASTI_BUS_WIDTH-1:0]                            dmem_rdata;
    wire                                   dmem_badmem_e;
 
+   assign htif_debug_stats_pcr = 1'b0;
    
    vscale_hasti_bridge imem_bridge(
                                    .haddr(imem_haddr),

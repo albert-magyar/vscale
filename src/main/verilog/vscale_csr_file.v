@@ -39,9 +39,9 @@ module vscale_csr_file(
    reg 						    htif_fire;
    reg 						    next_htif_state;
    
-   reg [63:0] 					    cycle_full;
-   reg [63:0] 					    time_full;
-   reg [63:0] 					    instret_full;
+   reg [`CSR_COUNTER_WIDTH-1:0] 					    cycle_full;
+   reg [`CSR_COUNTER_WIDTH-1:0] 					    time_full;
+   reg [`CSR_COUNTER_WIDTH-1:0] 					    instret_full;
    reg [5:0] 					    priv_stack;
    reg [`XPR_LEN-1:0] 				    mtvec;
    reg 						    mtie;
@@ -49,7 +49,7 @@ module vscale_csr_file(
    reg mtip;
    reg msip;
    reg [`XPR_LEN-1:0] 				    mtimecmp;
-   reg [63:0] 					    mtime_full;
+   reg [`CSR_COUNTER_WIDTH-1:0] 					    mtime_full;
    reg [`XPR_LEN-1:0] 				    mscratch;
    reg [`XPR_LEN-1:0] 				    mepc;
    reg [`ECODE_WIDTH-1:0] 			    mecode;
@@ -182,7 +182,7 @@ module vscale_csr_file(
 
    assign mtdeleg = 0;
 
-   assign mtimer_expired = (mtimecmp == mtime_full[31:0]);
+   assign mtimer_expired = (mtimecmp == mtime_full[0+:`XPR_LEN]);
 
    always @(posedge clk) begin
       if (reset) begin
@@ -259,12 +259,12 @@ module vscale_csr_file(
    
    always @(*) begin
       case (addr)
-        `CSR_ADDR_CYCLE     : begin rdata = cycle_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_TIME      : begin rdata = time_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_INSTRET   : begin rdata = instret_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_CYCLEH    : begin rdata = cycle_full[63:32]; defined = 1'b1; end
-        `CSR_ADDR_TIMEH     : begin rdata = time_full[63:32]; defined = 1'b1; end
-        `CSR_ADDR_INSTRETH  : begin rdata = instret_full[63:32]; defined = 1'b1; end
+        `CSR_ADDR_CYCLE     : begin rdata = cycle_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_TIME      : begin rdata = time_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_INSTRET   : begin rdata = instret_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_CYCLEH    : begin rdata = cycle_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_TIMEH     : begin rdata = time_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_INSTRETH  : begin rdata = instret_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
         `CSR_ADDR_MCPUID    : begin rdata = mcpuid; defined = 1'b1; end
         `CSR_ADDR_MIMPID    : begin rdata = mimpid; defined = 1'b1; end
         `CSR_ADDR_MHARTID   : begin rdata = mhartid; defined = 1'b1; end
@@ -273,19 +273,19 @@ module vscale_csr_file(
         `CSR_ADDR_MTDELEG   : begin rdata = mtdeleg; defined = 1'b1; end
         `CSR_ADDR_MIE       : begin rdata = mie; defined = 1'b1; end
         `CSR_ADDR_MTIMECMP  : begin rdata = mtimecmp; defined = 1'b1; end
-        `CSR_ADDR_MTIME     : begin rdata = mtime_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_MTIMEH    : begin rdata = mtime_full[63:32]; defined = 1'b1; end
+        `CSR_ADDR_MTIME     : begin rdata = mtime_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_MTIMEH    : begin rdata = mtime_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
         `CSR_ADDR_MSCRATCH  : begin rdata = mscratch; defined = 1'b1; end
         `CSR_ADDR_MEPC      : begin rdata = mepc; defined = 1'b1; end
         `CSR_ADDR_MCAUSE    : begin rdata = mcause; defined = 1'b1; end
         `CSR_ADDR_MBADADDR  : begin rdata = mbadaddr; defined = 1'b1; end
         `CSR_ADDR_MIP       : begin rdata = mip; defined = 1'b1; end
-        `CSR_ADDR_CYCLEW    : begin rdata = cycle_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_TIMEW     : begin rdata = time_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_INSTRETW  : begin rdata = instret_full[31:0]; defined = 1'b1; end
-        `CSR_ADDR_CYCLEHW   : begin rdata = cycle_full[63:32]; defined = 1'b1; end
-        `CSR_ADDR_TIMEHW    : begin rdata = time_full[63:32]; defined = 1'b1; end
-        `CSR_ADDR_INSTRETHW : begin rdata = instret_full[63:32]; defined = 1'b1; end
+        `CSR_ADDR_CYCLEW    : begin rdata = cycle_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_TIMEW     : begin rdata = time_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_INSTRETW  : begin rdata = instret_full[0+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_CYCLEHW   : begin rdata = cycle_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_TIMEHW    : begin rdata = time_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
+        `CSR_ADDR_INSTRETHW : begin rdata = instret_full[`XPR_LEN+:`XPR_LEN]; defined = 1'b1; end
 	// non-standard
 	`CSR_ADDR_TO_HOST : begin rdata = to_host; defined = 1'b1; end
 	`CSR_ADDR_FROM_HOST : begin rdata = from_host; defined = 1'b1; end
@@ -311,12 +311,12 @@ module vscale_csr_file(
          mtime_full <= mtime_full + 1;
 	 if (wen_internal) begin
             case (addr)
-              `CSR_ADDR_CYCLE     : cycle_full[31:0] <= wdata_internal;
-              `CSR_ADDR_TIME      : time_full[31:0] <= wdata_internal;
-              `CSR_ADDR_INSTRET   : instret_full[31:0] <= wdata_internal;
-              `CSR_ADDR_CYCLEH    : cycle_full[63:32] <= wdata_internal;
-              `CSR_ADDR_TIMEH     : time_full[63:32] <= wdata_internal;
-              `CSR_ADDR_INSTRETH  : instret_full[63:32] <= wdata_internal;
+              `CSR_ADDR_CYCLE     : cycle_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_TIME      : time_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_INSTRET   : instret_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_CYCLEH    : cycle_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_TIMEH     : time_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_INSTRETH  : instret_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
               // mcpuid is read-only
               // mimpid is read-only
               // mhartid is read-only
@@ -325,19 +325,19 @@ module vscale_csr_file(
               // mtdeleg constant
               // mie handled separately
               `CSR_ADDR_MTIMECMP  : mtimecmp <= wdata_internal;
-              `CSR_ADDR_MTIME     : mtime_full[31:0] <= wdata_internal;
-              `CSR_ADDR_MTIMEH    : mtime_full[63:32] <= wdata_internal;
+              `CSR_ADDR_MTIME     : mtime_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_MTIMEH    : mtime_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
               `CSR_ADDR_MSCRATCH  : mscratch <= wdata_internal;
               // mepc handled separately
               // mcause handled separately
               // mbadaddr handled separately
               // mip handled separately
-              `CSR_ADDR_CYCLEW    : cycle_full[31:0] <= wdata_internal;
-              `CSR_ADDR_TIMEW     : time_full[31:0] <= wdata_internal;
-              `CSR_ADDR_INSTRETW  : instret_full[31:0] <= wdata_internal;
-              `CSR_ADDR_CYCLEHW   : cycle_full[63:32] <= wdata_internal;
-              `CSR_ADDR_TIMEHW    : time_full[63:32] <= wdata_internal;
-              `CSR_ADDR_INSTRETHW : instret_full[63:32] <= wdata_internal;
+              `CSR_ADDR_CYCLEW    : cycle_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_TIMEW     : time_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_INSTRETW  : instret_full[0+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_CYCLEHW   : cycle_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_TIMEHW    : time_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
+              `CSR_ADDR_INSTRETHW : instret_full[`XPR_LEN+:`XPR_LEN] <= wdata_internal;
 	      `CSR_ADDR_TO_HOST   : to_host <= wdata_internal;
 	      `CSR_ADDR_FROM_HOST : from_host <= wdata_internal;
               default : ;

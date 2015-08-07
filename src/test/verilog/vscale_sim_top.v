@@ -1,5 +1,6 @@
 `include "vscale_ctrl_constants.vh"
 `include "vscale_csr_addr_map.vh"
+`include "vscale_hasti_constants.vh"
 
 module vscale_sim_top(
 		      input 			   clk,
@@ -14,33 +15,33 @@ module vscale_sim_top(
                       output [`HTIF_PCR_WIDTH-1:0] htif_pcr_resp_data
 		      );
 
-   wire                                      resetn;
+   wire 					   resetn;
    
-   wire [31:0]                               imem_haddr;
-   wire                                      imem_hwrite;
-   wire [2:0]                                imem_hsize;
-   wire [2:0]                                imem_hburst;
-   wire                                      imem_hmastlock;
-   wire [3:0]                                imem_hprot;
-   wire [1:0]                                imem_htrans;
-   wire [31:0]                               imem_hwdata;
-   wire [31:0]                               imem_hrdata;
-   wire                                      imem_hready;
-   wire                                      imem_hresp;
+   wire [`HASTI_ADDR_WIDTH-1:0] 		   imem_haddr;
+   wire 					   imem_hwrite;
+   wire [`HASTI_SIZE_WIDTH-1:0] 		   imem_hsize;
+   wire [`HASTI_BURST_WIDTH-1:0] 		   imem_hburst;
+   wire 					   imem_hmastlock;
+   wire [`HASTI_PROT_WIDTH-1:0] 		   imem_hprot;
+   wire [`HASTI_TRANS_WIDTH-1:0] 		   imem_htrans;
+   wire [`HASTI_BUS_WIDTH-1:0] 			   imem_hwdata;
+   wire [`HASTI_BUS_WIDTH-1:0] 			   imem_hrdata;
+   wire 					   imem_hready;
+   wire [`HASTI_RESP_WIDTH-1:0] 		   imem_hresp;
    
-   wire [31:0]                               dmem_haddr;
-   wire                                      dmem_hwrite;
-   wire [2:0]                                dmem_hsize;
-   wire [2:0]                                dmem_hburst;
-   wire                                      dmem_hmastlock;
-   wire [3:0]                                dmem_hprot;
-   wire [1:0]                                dmem_htrans;
-   wire [31:0]                               dmem_hwdata;
-   wire [31:0]                               dmem_hrdata;
-   wire                                      dmem_hready;
-   wire                                      dmem_hresp;
-
-   wire                                      htif_reset;
+   wire [`HASTI_ADDR_WIDTH-1:0] 		   dmem_haddr;
+   wire 					   dmem_hwrite;
+   wire [`HASTI_SIZE_WIDTH-1:0] 		   dmem_hsize;
+   wire [`HASTI_BURST_WIDTH-1:0] 		   dmem_hburst;
+   wire 					   dmem_hmastlock;
+   wire [`HASTI_PROT_WIDTH-1:0] 		   dmem_hprot;
+   wire [`HASTI_TRANS_WIDTH-1:0] 		   dmem_htrans;
+   wire [`HASTI_BUS_WIDTH-1:0] 			   dmem_hwdata;
+   wire [`HASTI_BUS_WIDTH-1:0] 			   dmem_hrdata;
+   wire 					   dmem_hready;
+   wire [`HASTI_RESP_WIDTH-1:0] 		   dmem_hresp;
+   
+   wire 					   htif_reset;
    
    assign resetn = ~reset;
    assign htif_reset = reset;
