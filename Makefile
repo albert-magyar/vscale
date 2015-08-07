@@ -36,9 +36,9 @@ VERILATOR_CPP_TB = $(CXX_TEST_DIR)/vscale_benchmark.cpp
 VERILATOR_TOP = $(V_TEST_DIR)/vscale_benchmark_top.v
 
 DESIGN_SRCS = $(addprefix $(V_SRC_DIR)/, \
-vscale_hasti_wrapper.v \
-vscale_hasti_bridge.v \
 vscale_core.v \
+vscale_hasti_bridge.v \
+vscale_pipeline.v \
 vscale_ctrl.v \
 vscale_regfile.v \
 vscale_src_a_mux.v \
