@@ -2,26 +2,26 @@
 
 module vscale_hasti_bridge(
                            output [`HASTI_ADDR_WIDTH-1:0]  haddr,
-                           output 			   hwrite,
+                           output                          hwrite,
                            output [`HASTI_SIZE_WIDTH-1:0]  hsize,
                            output [`HASTI_BURST_WIDTH-1:0] hburst,
-                           output 			   hmastlock,
+                           output                          hmastlock,
                            output [`HASTI_PROT_WIDTH-1:0]  hprot,
                            output [`HASTI_TRANS_WIDTH-1:0] htrans,
                            output [`HASTI_BUS_WIDTH-1:0]   hwdata,
                            input [`HASTI_BUS_WIDTH-1:0]    hrdata,
-                           input 			   hready,
+                           input                           hready,
                            input [`HASTI_RESP_WIDTH-1:0]   hresp,
-                           input 			   core_mem_en,
-                           input 			   core_mem_wen,
+                           input                           core_mem_en,
+                           input                           core_mem_wen,
                            input [`HASTI_SIZE_WIDTH-1:0]   core_mem_size,
                            input [`HASTI_ADDR_WIDTH-1:0]   core_mem_addr,
                            input [`HASTI_BUS_WIDTH-1:0]    core_mem_wdata_delayed,
                            output [`HASTI_BUS_WIDTH-1:0]   core_mem_rdata,
-                           output 			   core_mem_wait,
-                           output 			   core_badmem_e
+                           output                          core_mem_wait,
+                           output                          core_badmem_e
                            );
-   
+
 
    assign haddr = core_mem_addr;
    assign hwrite = core_mem_en && core_mem_wen;

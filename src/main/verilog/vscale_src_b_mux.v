@@ -7,8 +7,8 @@ module vscale_src_b_mux(
                         input [`XPR_LEN-1:0]         rs2_data,
                         output reg [`XPR_LEN-1:0]    alu_src_b
                         );
-   
-   
+
+
    always @(*) begin
       case (src_b_sel)
         `SRC_B_RS2 : alu_src_b = rs2_data;

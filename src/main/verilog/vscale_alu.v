@@ -9,9 +9,9 @@ module vscale_alu(
                   );
 
    wire [`SHAMT_WIDTH-1:0]                  shamt;
-   
+
    assign shamt = in2[`SHAMT_WIDTH-1:0];
-   
+
    always @(*) begin
       case (op)
         `ALU_OP_ADD : out = in1 + in2;
@@ -31,6 +31,6 @@ module vscale_alu(
         default : out = 0;
       endcase // case op
    end
-   
-   
+
+
 endmodule // vscale_alu
