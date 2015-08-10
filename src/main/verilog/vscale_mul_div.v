@@ -40,7 +40,7 @@ module vscale_mul_div(
    wire                                             a_geq;
    wire [`DOUBLE_XPR_LEN-1:0]                       result_muxed;
    wire [`DOUBLE_XPR_LEN-1:0]                       result_muxed_negated;
-
+   wire [`XPR_LEN-1:0]                              final_result;
 
    function [`XPR_LEN-1:0] abs_input;
       input [`XPR_LEN-1:0]                          data;
@@ -60,10 +60,9 @@ module vscale_mul_div(
    assign sign_in_2 = req_in_2_signed && req_in_2[`XPR_LEN-1];
 
    assign a_geq = a >= b;
-   assign result_muxed = (out_sel == `MD_OUT_REM) ?
-                         a : (out_sel == `MD_OUT_HI) ?
-                         result[`XPR_LEN+:`XPR_LEN] : result[0+:`XPR_LEN];
+   assign result_muxed = (out_sel == `MD_OUT_REM) ? a : result;
    assign result_muxed_negated = (negate_output) ? -result_muxed : result_muxed;
+   assign final_result = (out_sel == `MD_OUT_HI) ? result_muxed_negated[`XPR_LEN+:`XPR_LEN] : result_muxed_negated[0+:`XPR_LEN];
 
    always @(posedge clk) begin
       if (reset) begin
@@ -89,7 +88,7 @@ module vscale_mul_div(
            if (req_valid) begin
               result <= 0;
               a <= {`XPR_LEN'b0,abs_in_1};
-              b <= {abs_in_2,`XPR_LEN'b0};
+              b <= {abs_in_2,`XPR_LEN'b0} >> 1;
               negate_output <= (op == `MD_OP_REM) ? sign_in_1 : sign_in_1 ^ sign_in_2;
               out_sel <= req_out_sel;
               op <= req_op;
@@ -112,7 +111,7 @@ module vscale_mul_div(
            end
         end // case: s_compute
         s_setup_output : begin
-           result <= result_muxed_negated;
+           result <= {`XPR_LEN'b0,final_result};
         end
       endcase // case (state)
    end // always @ (posedge clk)

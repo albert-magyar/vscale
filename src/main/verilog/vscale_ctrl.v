@@ -131,7 +131,7 @@ module vscale_ctrl(
    end
 
    assign kill_IF = stall_IF || ex_IF || ex_DX || ex_WB || redirect || replay_IF;
-   assign stall_IF = (imem_wait && !redirect || stall_DX) && !exception;
+   assign stall_IF = ((imem_wait && !redirect) || stall_DX) && !exception;
    assign ex_IF = imem_badmem_e && !imem_wait && !redirect && !replay_IF;
 
    // DX stage ctrl
@@ -356,13 +356,13 @@ module vscale_ctrl(
            md_req_op = `MD_OP_DIV;
         end
         `RV32_FUNCT3_REM : begin
-           md_req_op = `MD_OP_DIV;
+           md_req_op = `MD_OP_REM;
            md_req_in_1_signed = 1;
            md_req_in_2_signed = 1;
            md_req_out_sel = `MD_OUT_REM;
         end
         `RV32_FUNCT3_REMU : begin
-           md_req_op = `MD_OP_DIV;
+           md_req_op = `MD_OP_REM;
            md_req_out_sel = `MD_OUT_REM;
         end
       endcase
@@ -396,7 +396,7 @@ module vscale_ctrl(
    always @(*) begin
       if (exception) begin
          PC_src_sel = `PC_HANDLER;
-      end else if (replay_IF) begin
+      end else if (replay_IF || (stall_IF && !imem_wait)) begin
          PC_src_sel = `PC_REPLAY;
       end else if (eret) begin
          PC_src_sel = `PC_EPC;
